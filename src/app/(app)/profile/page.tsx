@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage } from "@/lib/constants";
 import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint } from "lucide-react"; // Added Fingerprint
+import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +50,7 @@ export default function ProfilePage() {
   const [hourlyRateInput, setHourlyRateInput] = useState<number | string>('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://placehold.co/128x128.png');
-  const [aadhaarNumberInput, setAadhaarNumberInput] = useState(''); // New state for Aadhaar number
+  const [aadhaarNumberInput, setAadhaarNumberInput] = useState('');
   
   const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null); 
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +72,7 @@ export default function ProfilePage() {
             setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
             setBio(userProfile.bio || '');
             setAddress(userProfile.address || '');
-            setAadhaarNumberInput(userProfile.aadhaarNumber || ''); // Load Aadhaar number
+            setAadhaarNumberInput(userProfile.aadhaarNumber || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           }
         } else if (userAppRole === 'customer') {
@@ -83,7 +83,7 @@ export default function ProfilePage() {
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           }
         }
-        if (!userProfile && (username === '' || username === currentUser.uid)) {
+        if (!userProfile && (username === '' || username === currentUser.uid || (currentUser.email && username === currentUser.email.split('@')[0]))) {
            setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
         }
       } else {
@@ -148,8 +148,9 @@ export default function ProfilePage() {
 
     const usernameLower = username.toLowerCase();
     const isUsernameTakenByOther = 
-        (userAppRole === 'worker' && (MOCK_WORKERS.some(w => w.email !== currentUser.email && w.username.toLowerCase() === usernameLower) || MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === usernameLower))) ||
-        (userAppRole === 'customer' && (MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.username.toLowerCase() === usernameLower) || MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower)));
+        (userAppRole === 'worker' && (MOCK_WORKERS.some(w => w.email !== currentUser.email && w.id !== currentUser.uid && w.username.toLowerCase() === usernameLower) || MOCK_CUSTOMERS.some(c => c.id !== currentUser.uid && c.username.toLowerCase() === usernameLower))) ||
+        (userAppRole === 'customer' && (MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.id !== currentUser.uid && c.username.toLowerCase() === usernameLower) || MOCK_WORKERS.some(w => w.id !== currentUser.uid && w.username.toLowerCase() === usernameLower)));
+
 
     if (isUsernameTakenByOther) {
         toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use. Please choose another." });
@@ -164,8 +165,7 @@ export default function ProfilePage() {
         name, username, skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
         bio, avatarUrl, address, email,
-        aadhaarNumber: aadhaarNumberInput, // Save Aadhaar number
-        // aadhaarVerified status is admin controlled, so not set here by user
+        aadhaarNumber: aadhaarNumberInput,
       };
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
@@ -176,7 +176,7 @@ export default function ProfilePage() {
             isVerified: false, rating: 0, aadhaarVerified: MOCK_WORKERS[workerIdx]?.aadhaarVerified || false, 
             ...workerDataUpdate, 
             role: 'worker'
-        } as Worker); // Cast to Worker
+        } as Worker);
       }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
@@ -197,6 +197,9 @@ export default function ProfilePage() {
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
+    if (!authContextIsProfileComplete && (isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad)) {
+        router.push('/dashboard');
+    }
   };
 
   if (authLoading) {
@@ -368,13 +371,7 @@ export default function ProfilePage() {
                             disabled={isSaving}
                         />
                     </div>
-                     <div className="flex items-center space-x-2 pt-2 md:pt-7"> {/* Adjusted padding for alignment */}
-                        <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.isVerified || false} disabled />
-                        <Label htmlFor="availability" className="flex items-center">
-                            <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/>Profile Verified (Admin)
-                        </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 pt-2">
+                    <div className="flex items-center space-x-2 pt-2 md:pt-7"> {/* Adjusted padding for alignment for Aadhaar */}
                         <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified || false} disabled />
                         <Label htmlFor="aadhaarVerified" className="flex items-center">
                             {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified ? 
@@ -412,3 +409,5 @@ export default function ProfilePage() {
   );
 }
 
+
+    
