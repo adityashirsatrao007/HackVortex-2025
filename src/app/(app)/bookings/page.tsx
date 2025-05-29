@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListChecks, CalendarClock, CalendarX2, Briefcase, History, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from "@/components/ui/button"; // Added import
+import Link from 'next/link'; // Added import
 
 export default function BookingHistoryPage() {
   const { currentUser, userAppRole } = useAuth();
