@@ -15,14 +15,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-// RadioGroup import removed as role selection is removed from this form
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// UserRole type import removed
 import { useAuth } from "@/hooks/use-auth"; 
 import { UserPlus, Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react"; 
-import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon";
+import { KarigarKartLogoIcon } from "@/components/icons/karigar-kart-logo-icon"; // Updated import
 import React, { useState } from "react";
-// Separator import removed
 import { useToast } from "@/hooks/use-toast";
 import { MOCK_CUSTOMERS, MOCK_WORKERS } from "@/lib/constants";
 
@@ -34,7 +31,6 @@ const signupFormSchemaBase = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
-  // role field removed from base schema
 });
 
 const signupFormSchemaWithOtp = signupFormSchemaBase.extend({
@@ -67,7 +63,6 @@ export function SignupForm() {
       email: "",
       password: "",
       confirmPassword: "",
-      // role default removed
       otp: "",
     },
   });
@@ -95,7 +90,7 @@ export function SignupForm() {
       });
     } else { 
       if (data.otp === generatedOtp) {
-        await signup(data.email, data.password, data.name, data.username); // Role removed from signup call
+        await signup(data.email, data.password, data.name, data.username);
         setOtpSent(false);
         setGeneratedOtp(null);
         form.reset(); 
@@ -123,7 +118,7 @@ export function SignupForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-             <KarigarKartToolboxLogoIcon className="h-10 w-10 text-primary" />
+             <KarigarKartLogoIcon className="h-10 w-10 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
         <CardDescription>Join Karigar Kart today.</CardDescription>
@@ -235,8 +230,6 @@ export function SignupForm() {
               )}
             />
             
-            {/* Role selection RadioGroup removed */}
-
             {otpSent && (
               <FormField
                 control={form.control}
@@ -269,8 +262,6 @@ export function SignupForm() {
             </Button>
           </form>
         </Form>
-
-        {/* Removed Google Sign-Up Button and Separator */}
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Already have an account?{" "}

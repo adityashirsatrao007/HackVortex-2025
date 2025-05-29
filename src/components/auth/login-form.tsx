@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth"; 
 import { LogIn, Loader2, Eye, EyeOff } from "lucide-react"; 
-import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon";
+import { KarigarKartLogoIcon } from "@/components/icons/karigar-kart-logo-icon"; // Updated import
 import React from "react";
 import { Separator } from "@/components/ui/separator";
 
@@ -48,7 +48,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-            <KarigarKartToolboxLogoIcon className="h-10 w-10 text-primary" />
+            <KarigarKartLogoIcon className="h-10 w-10 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
         <CardDescription>Log in to your Karigar Kart account.</CardDescription>
@@ -112,8 +112,6 @@ export function LoginForm() {
           </form>
         </Form>
         
-        {/* Removed Google Sign-In Button and Separator */}
-
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="font-medium text-primary hover:underline">
