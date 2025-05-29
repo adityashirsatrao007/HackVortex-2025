@@ -29,13 +29,11 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   markProfileComplete: () => void;
   refreshAuthLoading: () => void; 
-  // Allow direct state access for specific scenarios like profile save redirect
   getState: () => AuthState;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function for mock role detection
 const detectUserRole = (email: string | null): UserRole => {
   if (!email) return 'customer'; 
   if (MOCK_WORKERS.some(worker => worker.email === email)) {
@@ -46,12 +44,14 @@ const detectUserRole = (email: string | null): UserRole => {
 
 const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null): boolean => {
   if (!user || !role) return false;
+  // If email is null, profile cannot be considered complete based on mock data email matching.
+  if (!user.email) return false; 
+
   if (role === 'customer') {
     const customerProfile = MOCK_CUSTOMERS.find(c => c.email === user.email);
     return !!(customerProfile && customerProfile.address && customerProfile.address.trim() !== '');
   } else if (role === 'worker') {
     const workerProfile = MOCK_WORKERS.find(w => w.email === user.email);
-    // For workers, check string address, skills, and bio
     return !!(workerProfile &&
                (workerProfile as any).address && (workerProfile as any).address.trim() !== '' &&
                workerProfile.skills && workerProfile.skills.length > 0 &&
@@ -68,43 +68,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
-  const updateAuthState = useCallback((user: FirebaseUser | null) => {
-    setCurrentUser(user);
-    if (user) {
-      // Prioritize existing userAppRole if it was just set by login/signup
-      const roleToUse = userAppRole && currentUser?.uid === user.uid ? userAppRole : detectUserRole(user.email);
-      setUserAppRole(roleToUse);
-      setIsProfileComplete(checkProfileCompletion(user, roleToUse));
-    } else {
-      setUserAppRole(null);
-      setIsProfileComplete(false);
-    }
-    setLoading(false);
-  }, [currentUser, userAppRole]); // Added dependencies
-
-
-  const refreshAuthLoading = useCallback(() => {
-    setLoading(true);
-    setTimeout(() => { // Simulate async nature of checking profile
-        if (auth.currentUser) {
-            const role = userAppRole || detectUserRole(auth.currentUser.email); // Use existing role if available
-            setUserAppRole(role);
-            setIsProfileComplete(checkProfileCompletion(auth.currentUser, role));
-        } else {
-            setUserAppRole(null);
-            setIsProfileComplete(false);
-        }
-        setLoading(false);
-    }, 50);
-  }, [userAppRole]); // Added userAppRole to dependencies
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setLoading(true);
-      updateAuthState(user);
+      if (user) {
+        // If the user object from onAuthStateChanged is different from the current one in state,
+        // or if userAppRole is not yet set, we determine the role.
+        // This helps preserve a role that might have just been set by signup/login.
+        let role = userAppRole; 
+        if (!currentUser || currentUser.uid !== user.uid || !role) {
+          role = detectUserRole(user.email);
+        }
+        
+        setCurrentUser(user); // Set current user from Firebase
+        setUserAppRole(role); // Set the role (either persisted or newly detected)
+        setIsProfileComplete(checkProfileCompletion(user, role)); // Check completion
+      } else {
+        setCurrentUser(null);
+        setUserAppRole(null);
+        setIsProfileComplete(false);
+      }
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [updateAuthState]); // Use updateAuthState as dependency
+  }, [currentUser, userAppRole]); // Re-run if currentUser state or userAppRole state changes
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
@@ -112,8 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
       const role = detectUserRole(email); 
-      setUserAppRole(role); 
-      setCurrentUser(user); 
+      
+      setCurrentUser(user); // Explicitly set current user
+      setUserAppRole(role); // Explicitly set role
       const profileComplete = checkProfileCompletion(user, role);
       setIsProfileComplete(profileComplete);
       
@@ -136,22 +124,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      if (userCredential.user) {
-        await updateProfile(userCredential.user, { displayName: name });
+      const firebaseUser = userCredential.user;
 
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: name });
+
+        // Add to MOCK data *before* setting local auth state reliant on this mock data
         if (role === 'customer' && !MOCK_CUSTOMERS.find(c => c.email === email)) {
-            MOCK_CUSTOMERS.push({ id: userCredential.user.uid, name, email, role, address: '' } as Customer);
+            MOCK_CUSTOMERS.push({ id: firebaseUser.uid, name, email, role, address: '' } as Customer);
         } else if (role === 'worker' && !MOCK_WORKERS.find(w => w.email === email)) {
             MOCK_WORKERS.push({
-                id: userCredential.user.uid, name, email, role, skills: [],
+                id: firebaseUser.uid, name, email, role, skills: [],
                 location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0,
-                address: '' // Ensure string address is initialized empty for workers for profile completion check
+                address: '' 
             } as WorkerType & { address?: string });
         }
         
-        setUserAppRole(role); 
-        setIsProfileComplete(false); 
-        setCurrentUser(userCredential.user); 
+        setCurrentUser(firebaseUser); // Set current user state
+        setUserAppRole(role); // Set role state
+        setIsProfileComplete(false); // New users always need to complete profile details
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}!` });
       router.push('/profile?new=true'); 
@@ -182,18 +173,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const markProfileComplete = useCallback(() => {
-    if (currentUser) {
-        const roleToUse = userAppRole || detectUserRole(currentUser.email); 
-        if (roleToUse) { 
-             setUserAppRole(roleToUse); // Ensure role is set
-             setIsProfileComplete(checkProfileCompletion(currentUser, roleToUse));
-        } else {
-            setIsProfileComplete(false); 
-        }
+    if (auth.currentUser) { // Use auth.currentUser for the most definitive source
+        const roleToUse = userAppRole || detectUserRole(auth.currentUser.email); 
+        setUserAppRole(roleToUse); 
+        setIsProfileComplete(checkProfileCompletion(auth.currentUser, roleToUse));
     } else {
         setIsProfileComplete(false); 
     }
-  }, [currentUser, userAppRole]);
+  }, [userAppRole]); // Removed currentUser from here to rely on auth.currentUser within
+
+  const refreshAuthLoading = useCallback(() => {
+    setLoading(true);
+    setTimeout(() => { 
+        if (auth.currentUser) {
+            const role = userAppRole || detectUserRole(auth.currentUser.email); 
+            setUserAppRole(role);
+            setIsProfileComplete(checkProfileCompletion(auth.currentUser, role));
+        } else {
+            setUserAppRole(null);
+            setIsProfileComplete(false);
+        }
+        setLoading(false);
+    }, 50);
+  }, [userAppRole]); 
 
   const getState = useCallback((): AuthState => ({
     currentUser,
@@ -226,3 +228,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
