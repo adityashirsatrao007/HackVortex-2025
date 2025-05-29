@@ -11,6 +11,7 @@ export interface GeoLocation {
 export interface BaseUser {
   id: string;
   name: string;
+  username: string; // Added mandatory username
   email: string;
   role: UserRole;
   avatarUrl?: string;
@@ -63,7 +64,7 @@ export interface Booking {
 export type User = Customer | Worker;
 
 export interface NotificationType {
-  id: string;
+  id:string;
   workerId: string;
   bookingId: string;
   customerName: string;

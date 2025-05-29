@@ -25,7 +25,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   login: (email: string, pass: string) => Promise<UserCredential | void>;
-  signup: (email: string, pass: string, name: string, role: UserRole) => Promise<UserCredential | void>;
+  signup: (email: string, pass: string, name: string, username: string, role: UserRole) => Promise<UserCredential | void>;
   logout: () => Promise<void>;
   markProfileComplete: () => void;
   refreshAuthLoading: () => void; 
@@ -44,7 +44,6 @@ const detectUserRole = (email: string | null): UserRole => {
 
 const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null): boolean => {
   if (!user || !role) return false;
-  // If email is null, profile cannot be considered complete based on mock data email matching.
   if (!user.email) return false; 
 
   if (role === 'customer') {
@@ -72,17 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setLoading(true);
       if (user) {
-        // If the user object from onAuthStateChanged is different from the current one in state,
-        // or if userAppRole is not yet set, we determine the role.
-        // This helps preserve a role that might have just been set by signup/login.
-        let role = userAppRole; 
-        if (!currentUser || currentUser.uid !== user.uid || !role) {
+        let role = userAppRole;
+        // Prioritize role if already set (e.g. by signup/login) and user matches
+        if (currentUser && currentUser.uid === user.uid && role) {
+          // Role already set, trust it for now
+        } else {
           role = detectUserRole(user.email);
         }
         
-        setCurrentUser(user); // Set current user from Firebase
-        setUserAppRole(role); // Set the role (either persisted or newly detected)
-        setIsProfileComplete(checkProfileCompletion(user, role)); // Check completion
+        setCurrentUser(user);
+        setUserAppRole(role);
+        setIsProfileComplete(checkProfileCompletion(user, role));
       } else {
         setCurrentUser(null);
         setUserAppRole(null);
@@ -100,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = userCredential.user;
       const role = detectUserRole(email); 
       
-      setCurrentUser(user); // Explicitly set current user
-      setUserAppRole(role); // Explicitly set role
+      setCurrentUser(user); 
+      setUserAppRole(role); 
       const profileComplete = checkProfileCompletion(user, role);
       setIsProfileComplete(profileComplete);
       
@@ -120,9 +119,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (email: string, pass: string, name: string, role: UserRole) => {
+  const signup = async (email: string, pass: string, name: string, username: string, role: UserRole) => {
     setLoading(true);
     try {
+      // Check for username uniqueness (mock implementation)
+      const usernameExists = MOCK_WORKERS.some(w => w.username.toLowerCase() === username.toLowerCase()) ||
+                             MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === username.toLowerCase());
+      if (usernameExists) {
+        toast({ variant: "destructive", title: "Signup Failed", description: "Username is already taken. Please choose another." });
+        setLoading(false);
+        return;
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const firebaseUser = userCredential.user;
 
@@ -131,12 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Add to MOCK data *before* setting local auth state reliant on this mock data
         if (role === 'customer' && !MOCK_CUSTOMERS.find(c => c.email === email)) {
-            MOCK_CUSTOMERS.push({ id: firebaseUser.uid, name, email, role, address: '' } as Customer);
+            MOCK_CUSTOMERS.push({ id: firebaseUser.uid, name, username, email, role, address: '' } as Customer);
         } else if (role === 'worker' && !MOCK_WORKERS.find(w => w.email === email)) {
             MOCK_WORKERS.push({
-                id: firebaseUser.uid, name, email, role, skills: [],
+                id: firebaseUser.uid, name, username, email, role, skills: [],
                 location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0,
-                address: '' 
+                address: '', aadhaarVerified: false, // Default aadhaarVerified
             } as WorkerType & { address?: string });
         }
         
@@ -173,14 +181,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const markProfileComplete = useCallback(() => {
-    if (auth.currentUser) { // Use auth.currentUser for the most definitive source
+    if (auth.currentUser) { 
         const roleToUse = userAppRole || detectUserRole(auth.currentUser.email); 
         setUserAppRole(roleToUse); 
         setIsProfileComplete(checkProfileCompletion(auth.currentUser, roleToUse));
     } else {
         setIsProfileComplete(false); 
     }
-  }, [userAppRole]); // Removed currentUser from here to rely on auth.currentUser within
+  }, [userAppRole]); 
 
   const refreshAuthLoading = useCallback(() => {
     setLoading(true);
@@ -228,4 +236,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

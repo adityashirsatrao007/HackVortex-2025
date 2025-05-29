@@ -20,10 +20,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth"; 
 import { UserPlus, Loader2 } from "lucide-react"; 
-import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon"; // Updated import
+import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon";
 
 const signupFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  username: z.string().min(3, { message: "Username must be at least 3 characters." })
+    .regex(/^[a-zA-Z0-9_]+$/, { message: "Username can only contain letters, numbers, and underscores." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
@@ -41,6 +43,7 @@ export function SignupForm() {
     resolver: zodResolver(signupFormSchema),
     defaultValues: {
       name: "",
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -49,14 +52,14 @@ export function SignupForm() {
   });
 
   async function onSubmit(data: SignupFormValues) {
-    await signup(data.email, data.password, data.name, data.role); 
+    await signup(data.email, data.password, data.name, data.username, data.role); 
   }
 
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-             <KarigarKartToolboxLogoIcon className="h-12 w-12 text-primary" /> {/* Updated icon */}
+             <KarigarKartToolboxLogoIcon className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
         <CardDescription>Join Karigar Kart today to find or offer services.</CardDescription>
@@ -72,6 +75,19 @@ export function SignupForm() {
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input placeholder="John Doe" {...field} disabled={loading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="johndoe_123" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -14,22 +14,16 @@ import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
-  // Initialize filteredWorkers with a copy of MOCK_WORKERS.
   const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([...MOCK_WORKERS]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
-  // This effect runs when the component mounts and if currentUser changes.
-  // It ensures that filteredWorkers is based on the potentially updated MOCK_WORKERS.
   useEffect(() => {
-    // Re-initialize/re-filter the list from the global MOCK_WORKERS array.
-    // This assumes MOCK_WORKERS has been mutated by signup/profile updates.
-    // We create a new array reference to ensure re-render.
     setFilteredWorkers([...MOCK_WORKERS]);
-    setSelectedWorkerId(undefined); // Reset selected worker
-  }, [currentUser]); // Trigger when currentUser changes (e.g., after login/signup)
+    setSelectedWorkerId(undefined);
+  }, [currentUser]); 
 
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
-    let workers = [...MOCK_WORKERS]; // Always start with a fresh copy of the current MOCK_WORKERS
+    let workers = [...MOCK_WORKERS]; 
     if (filters.category) {
       workers = workers.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
     }
@@ -37,6 +31,7 @@ export default function DashboardPage() {
       const queryLower = filters.query.toLowerCase();
       workers = workers.filter(worker =>
         worker.name.toLowerCase().includes(queryLower) ||
+        worker.username.toLowerCase().includes(queryLower) || // Added username search
         (worker.skills && worker.skills.some(skill => skill.toLowerCase().includes(queryLower)))
       );
     }
@@ -49,7 +44,6 @@ export default function DashboardPage() {
   };
 
   if (userAppRole === 'worker') {
-    // Worker Dashboard View
     return (
       <div className="space-y-8">
         <div>
@@ -113,7 +107,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Customer Dashboard View (default)
   return (
     <div className="space-y-8">
       <div>

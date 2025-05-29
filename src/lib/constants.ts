@@ -14,6 +14,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-1',
     name: 'Rajesh Kumar',
+    username: 'rajeshk_worker',
     email: 'rajesh.worker@example.com', // Unique email for role detection
     role: 'worker',
     skills: ['plumber', 'electrician'],
@@ -30,6 +31,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-2',
     name: 'Priya Singh',
+    username: 'priyas_worker',
     email: 'priya.worker@example.com', // Unique email
     role: 'worker',
     skills: ['carpenter'],
@@ -45,6 +47,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-3',
     name: 'Amit Patel',
+    username: 'amitp_worker',
     email: 'amit.worker@example.com', // Unique email
     role: 'worker',
     skills: ['mason', 'painter'],
@@ -64,6 +67,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
   {
     id: 'customer-1',
     name: 'Sita Sharma',
+    username: 'sitas_customer',
     email: 'sita.customer@example.com', // Unique email for role detection
     role: 'customer',
     avatarUrl: 'https://placehold.co/128x128.png',
@@ -72,6 +76,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
   {
     id: 'customer-2',
     name: 'Vikram Reddy',
+    username: 'vikramr_customer',
     email: 'vikram.customer@example.com', // Unique email
     role: 'customer',
     avatarUrl: 'https://placehold.co/128x128.png',
@@ -80,6 +85,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
    {
     id: 'customer-test', // Generic test customer for fallback
     name: 'Test Customer User',
+    username: 'test_customer',
     email: 'customer@example.com',
     role: 'customer',
     avatarUrl: 'https://placehold.co/128x128.png',
@@ -148,7 +154,7 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: 'customer-test', // Ananya Desai (using test customer)
+    customerId: 'customer-test', // Test Customer User
     customerName: 'Test Customer User',
     workerId: 'worker-1', // Rajesh Kumar
     workerName: 'Rajesh Kumar',
