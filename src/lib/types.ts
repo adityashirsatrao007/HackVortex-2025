@@ -11,7 +11,7 @@ export interface GeoLocation {
 export interface BaseUser {
   id: string;
   name: string;
-  username: string; // Added mandatory username
+  username: string;
   email: string;
   role: UserRole;
   avatarUrl?: string;
@@ -19,7 +19,7 @@ export interface BaseUser {
 
 export interface Customer extends BaseUser {
   role: 'customer';
-  address?: string;
+  address: string; // Made address mandatory for persistence check
 }
 
 export interface Worker extends BaseUser {
@@ -29,11 +29,12 @@ export interface Worker extends BaseUser {
   isVerified: boolean;
   aadhaarVerified?: boolean;
   selfieWithGpsUrl?: string;
-  rating: number; // Average rating
+  rating: number;
   bio?: string;
   hourlyRate?: number;
   availability?: { day: string, start: string, end: string }[];
   totalJobs?: number;
+  address: string; // Added address for workers too, for profile completion consistency
 }
 
 export type BookingStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled' | 'rejected';
@@ -73,3 +74,5 @@ export interface NotificationType {
   timestamp: string; // ISO string
   read: boolean;
 }
+
+    

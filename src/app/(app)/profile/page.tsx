@@ -8,23 +8,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES } from "@/lib/constants";
+import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage } from "@/lib/constants";
 import type { User, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2 } from "lucide-react"; 
+import { UserCircle, Edit3, Save, UserSquare2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast"; 
-import { useAuth } from '@/hooks/use-auth'; 
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { currentUser, userAppRole, markProfileComplete, refreshAuthLoading, isProfileComplete } = useAuth(); 
-  const { toast } = useToast(); 
+  const { currentUser, userAppRole, markProfileComplete, isProfileComplete: authContextIsProfileComplete, getState, refreshAuthLoading } = useAuth();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isNewUserFlow = searchParams.get('new') === 'true' && !isProfileComplete;
+  const isNewUserFlow = searchParams.get('new') === 'true' && !authContextIsProfileComplete;
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -41,32 +41,33 @@ export default function ProfilePage() {
       setEmail(currentUser.email || '');
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
 
+      let userProfile;
       if (userAppRole === 'worker') {
-        const existingWorker = MOCK_WORKERS.find(w => w.email === currentUser.email);
-        if (existingWorker) {
-          setUsername(existingWorker.username || '');
-          setSkillsInput(existingWorker.skills?.join(', ') || '');
-          setHourlyRateInput(existingWorker.hourlyRate?.toString() || '');
-          setBio(existingWorker.bio || '');
-          setAddress((existingWorker as any).address || '');
-          if(existingWorker.avatarUrl) setAvatarUrl(existingWorker.avatarUrl);
+        userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
+        if (userProfile) {
+          setUsername(userProfile.username || '');
+          setSkillsInput(userProfile.skills?.join(', ') || '');
+          setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
+          setBio(userProfile.bio || '');
+          setAddress((userProfile as any).address || ''); // Assuming worker also has an address field
+          if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
         } else {
-          const tempWorker = MOCK_WORKERS.find(w => w.id === currentUser.uid);
-          setUsername(tempWorker?.username || '');
+          // Initialize for a new worker if not found in mock (should be rare if signup adds them)
+          setUsername(currentUser.uid); // Default username
           setSkillsInput('');
           setHourlyRateInput('');
           setBio('');
           setAddress('');
         }
       } else if (userAppRole === 'customer') {
-        const existingCustomer = MOCK_CUSTOMERS.find(c => c.email === currentUser.email);
-        if (existingCustomer) {
-          setUsername(existingCustomer.username || '');
-          setAddress(existingCustomer.address || '');
-          if(existingCustomer.avatarUrl) setAvatarUrl(existingCustomer.avatarUrl);
+        userProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email || c.id === currentUser.uid);
+        if (userProfile) {
+          setUsername(userProfile.username || '');
+          setAddress(userProfile.address || '');
+          if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
         } else {
-          const tempCustomer = MOCK_CUSTOMERS.find(c => c.id === currentUser.uid);
-          setUsername(tempCustomer?.username || '');
+          // Initialize for a new customer
+          setUsername(currentUser.uid); // Default username
           setAddress('');
         }
       }
@@ -76,7 +77,8 @@ export default function ProfilePage() {
   const handleSaveChanges = () => {
     if (!currentUser || !userAppRole) return;
 
-    if (isNewUserFlow || !isProfileComplete) {
+    // Validation for new users or incomplete profiles
+    if (isNewUserFlow || !authContextIsProfileComplete) {
       if (userAppRole === 'customer') {
         if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
@@ -98,90 +100,86 @@ export default function ProfilePage() {
         }
       }
     }
-    
-    // Uniqueness check for username on save (simplified for mock)
-    const usernameLower = username.toLowerCase();
-    const isUsernameTaken = MOCK_WORKERS.some(w => w.email !== currentUser.email && w.username.toLowerCase() === usernameLower) ||
-                           MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.username.toLowerCase() === usernameLower);
 
-    if (isUsernameTaken) {
-        toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use. Please choose another." });
+    const usernameLower = username.toLowerCase();
+    const isUsernameTakenByOther = 
+        (userAppRole === 'worker' && (MOCK_WORKERS.some(w => w.email !== currentUser.email && w.username.toLowerCase() === usernameLower) || MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === usernameLower))) ||
+        (userAppRole === 'customer' && (MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.username.toLowerCase() === usernameLower) || MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower)));
+
+    if (isUsernameTakenByOther) {
+        toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use by another user. Please choose another." });
         return;
     }
 
 
     if (userAppRole === 'worker') {
-      const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email);
+      const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email || w.id === currentUser.uid);
       const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
       
-      const workerData: Partial<Worker> = {
+      const workerDataUpdate = {
         name,
-        username, 
+        username,
         skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || 0,
         bio,
         avatarUrl,
+        address: address, // Save address for worker too
       };
 
       if (workerIdx > -1) {
-        MOCK_WORKERS[workerIdx] = { 
-            ...MOCK_WORKERS[workerIdx], 
-            ...workerData,
-            location: MOCK_WORKERS[workerIdx].location || { lat: 0, lng: 0 },
+        MOCK_WORKERS[workerIdx] = {
+            ...MOCK_WORKERS[workerIdx],
+            ...workerDataUpdate
         };
-        (MOCK_WORKERS[workerIdx] as any).address = address;
-      } else {
+      } else { // Should ideally not happen if signup adds user, but as a fallback
         MOCK_WORKERS.push({
           id: currentUser.uid,
           email: currentUser.email || '',
           role: 'worker',
-          location: { lat: 0, lng: 0 }, 
+          location: { lat: 0, lng: 0 },
           isVerified: false, rating: 0, totalJobs: 0,
-          aadhaarVerified: false,
-          ...workerData,
-          username: username || currentUser.uid,
-          address: address,
-        } as Worker & { address?: string }); 
+          aadhaarVerified: false, // Default
+          ...workerDataUpdate
+        } as Worker);
       }
+      saveWorkersToLocalStorage(); // Persist changes
     } else if (userAppRole === 'customer') {
-      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.email === currentUser.email);
-      const customerData: Partial<Customer> = { name, username, address, avatarUrl };
+      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.email === currentUser.email || c.id === currentUser.uid);
+      const customerDataUpdate = { name, username, address, avatarUrl };
       if (customerIdx > -1) {
-        MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerData };
-      } else {
+        MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate };
+      } else { // Fallback
         MOCK_CUSTOMERS.push({
           id: currentUser.uid,
           email: currentUser.email || '',
           role: 'customer',
-          username: username || currentUser.uid,
-          ...customerData
+          ...customerDataUpdate
         } as Customer);
       }
+      saveCustomersToLocalStorage(); // Persist changes
     }
     
-    const wasProfileIncomplete = !isProfileComplete;
-    markProfileComplete(); 
-    refreshAuthLoading(); 
+    const profileWasInitiallyIncomplete = !authContextIsProfileComplete;
+    markProfileComplete(); // This should synchronously update isProfileComplete in AuthContext
 
     toast({
       title: "Profile Updated",
-      description: "Your changes have been saved (mock persistence).",
+      description: "Your changes have been saved.",
     });
 
-    if (wasProfileIncomplete) {
-        setTimeout(() => {
-            const updatedIsProfileComplete = (useAuth.getState && useAuth.getState().isProfileComplete) || 
-                                             (userAppRole === 'customer' ? !!address.trim() : 
-                                              !!(skillsInput.split(',').map(s => s.trim()).filter(Boolean).length > 0 && bio.trim() && address.trim()));
-            if (updatedIsProfileComplete) {
-                router.push('/dashboard');
-            }
-        }, 100);
+    if (profileWasInitiallyIncomplete) {
+      // Check the latest state from the context after markProfileComplete
+      // The AppLayout's useEffect will handle redirection based on the updated context state
+      // but we can also explicitly push if we are sure it's now complete.
+      if (getState().isProfileComplete) {
+          router.push('/dashboard');
+      }
     }
   };
 
+
   if (!currentUser || !userAppRole) {
-    return <p className="text-center py-10">Loading profile...</p>; 
+    return <p className="text-center py-10">Loading profile...</p>;
   }
 
   return (
@@ -233,17 +231,17 @@ export default function ProfilePage() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name"/>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="username_display">Username</Label>
-                <Input 
-                    id="username_display" 
-                    value={username} 
-                    onChange={(e) => setUsername(e.target.value)} 
+                <Label htmlFor="username_profile">Username</Label>
+                <Input
+                    id="username_profile"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     placeholder="Your unique username"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." />
+                <Label htmlFor="email_profile">Email Address</Label>
+                <Input id="email_profile" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." />
               </div>
               
               {userAppRole === 'customer' && (
@@ -252,7 +250,7 @@ export default function ProfilePage() {
                     <Input id="addressCustomer" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown"/>
                 </div>
               )}
-               {userAppRole === 'worker' && ( 
+               {userAppRole === 'worker' && (
                  <div className="space-y-1.5">
                     <Label htmlFor="addressWorker">Primary Location / Area (City/Area)</Label>
                     <Input id="addressWorker" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore (This helps customers find you)" />
@@ -314,3 +312,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

@@ -14,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import type { UserRole, Customer, Worker as WorkerType } from '@/lib/types';
-import { MOCK_WORKERS, MOCK_CUSTOMERS } from '@/lib/constants'; 
+import { MOCK_WORKERS, MOCK_CUSTOMERS, saveWorkersToLocalStorage, saveCustomersToLocalStorage } from '@/lib/constants';
 
 interface AuthState {
   currentUser: FirebaseUser | null;
@@ -28,14 +28,14 @@ interface AuthContextType extends AuthState {
   signup: (email: string, pass: string, name: string, username: string, role: UserRole) => Promise<UserCredential | void>;
   logout: () => Promise<void>;
   markProfileComplete: () => void;
-  refreshAuthLoading: () => void; 
+  refreshAuthLoading: () => void;
   getState: () => AuthState;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const detectUserRole = (email: string | null): UserRole => {
-  if (!email) return 'customer'; 
+  if (!email) return 'customer';
   if (MOCK_WORKERS.some(worker => worker.email === email)) {
     return 'worker';
   }
@@ -44,7 +44,7 @@ const detectUserRole = (email: string | null): UserRole => {
 
 const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null): boolean => {
   if (!user || !role) return false;
-  if (!user.email) return false; 
+  if (!user.email) return false;
 
   if (role === 'customer') {
     const customerProfile = MOCK_CUSTOMERS.find(c => c.email === user.email);
@@ -52,7 +52,7 @@ const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null
   } else if (role === 'worker') {
     const workerProfile = MOCK_WORKERS.find(w => w.email === user.email);
     return !!(workerProfile &&
-               (workerProfile as any).address && (workerProfile as any).address.trim() !== '' &&
+               (workerProfile as any).address && (workerProfile as any).address.trim() !== '' && // Using 'address' as it is on Worker type now
                workerProfile.skills && workerProfile.skills.length > 0 &&
                workerProfile.bio && workerProfile.bio.trim() !== '');
   }
@@ -73,8 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         let role = userAppRole;
         // Prioritize role if already set (e.g. by signup/login) and user matches
+        // AND if the currentUser state hasn't changed (meaning it's not a different user logging in)
         if (currentUser && currentUser.uid === user.uid && role) {
-          // Role already set, trust it for now
+          // Role already set for this specific user, trust it for now
         } else {
           role = detectUserRole(user.email);
         }
@@ -90,17 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [currentUser, userAppRole]); // Re-run if currentUser state or userAppRole state changes
+  }, []); // Run only on mount and unmount, role/currentUser changes handled by specific functions
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
-      const role = detectUserRole(email); 
+      const role = detectUserRole(email);
       
-      setCurrentUser(user); 
-      setUserAppRole(role); 
+      setCurrentUser(user);
+      setUserAppRole(role);
       const profileComplete = checkProfileCompletion(user, role);
       setIsProfileComplete(profileComplete);
       
@@ -122,9 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (email: string, pass: string, name: string, username: string, role: UserRole) => {
     setLoading(true);
     try {
-      // Check for username uniqueness (mock implementation)
-      const usernameExists = MOCK_WORKERS.some(w => w.username.toLowerCase() === username.toLowerCase()) ||
-                             MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === username.toLowerCase());
+      const usernameLower = username.toLowerCase();
+      const usernameExists = MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower) ||
+                             MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === usernameLower);
       if (usernameExists) {
         toast({ variant: "destructive", title: "Signup Failed", description: "Username is already taken. Please choose another." });
         setLoading(false);
@@ -137,23 +138,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         await updateProfile(firebaseUser, { displayName: name });
 
-        // Add to MOCK data *before* setting local auth state reliant on this mock data
-        if (role === 'customer' && !MOCK_CUSTOMERS.find(c => c.email === email)) {
-            MOCK_CUSTOMERS.push({ id: firebaseUser.uid, name, username, email, role, address: '' } as Customer);
-        } else if (role === 'worker' && !MOCK_WORKERS.find(w => w.email === email)) {
-            MOCK_WORKERS.push({
-                id: firebaseUser.uid, name, username, email, role, skills: [],
-                location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0,
-                address: '', aadhaarVerified: false, // Default aadhaarVerified
-            } as WorkerType & { address?: string });
+        if (role === 'customer') {
+            if (!MOCK_CUSTOMERS.find(c => c.email === email)) {
+                MOCK_CUSTOMERS.push({ id: firebaseUser.uid, name, username, email, role, address: '' } as Customer);
+                saveCustomersToLocalStorage(); // Persist
+            }
+        } else if (role === 'worker') {
+            if (!MOCK_WORKERS.find(w => w.email === email)) {
+                MOCK_WORKERS.push({
+                    id: firebaseUser.uid, name, username, email, role, skills: [],
+                    location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0,
+                    address: '', aadhaarVerified: false,
+                } as WorkerType);
+                saveWorkersToLocalStorage(); // Persist
+            }
         }
         
-        setCurrentUser(firebaseUser); // Set current user state
-        setUserAppRole(role); // Set role state
+        setCurrentUser(firebaseUser);
+        setUserAppRole(role);
         setIsProfileComplete(false); // New users always need to complete profile details
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}!` });
-      router.push('/profile?new=true'); 
+      router.push('/profile?new=true');
       return userCredential;
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -181,20 +187,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const markProfileComplete = useCallback(() => {
-    if (auth.currentUser) { 
-        const roleToUse = userAppRole || detectUserRole(auth.currentUser.email); 
-        setUserAppRole(roleToUse); 
+    if (auth.currentUser) {
+        const roleToUse = userAppRole || detectUserRole(auth.currentUser.email);
+        // setUserAppRole(roleToUse); // Setting role here might be redundant if already set
         setIsProfileComplete(checkProfileCompletion(auth.currentUser, roleToUse));
     } else {
-        setIsProfileComplete(false); 
+        setIsProfileComplete(false);
     }
-  }, [userAppRole]); 
+  }, [userAppRole]);
 
   const refreshAuthLoading = useCallback(() => {
     setLoading(true);
-    setTimeout(() => { 
+    setTimeout(() => {
         if (auth.currentUser) {
-            const role = userAppRole || detectUserRole(auth.currentUser.email); 
+            const role = userAppRole || detectUserRole(auth.currentUser.email);
             setUserAppRole(role);
             setIsProfileComplete(checkProfileCompletion(auth.currentUser, role));
         } else {
@@ -203,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false);
     }, 50);
-  }, [userAppRole]); 
+  }, [userAppRole]);
 
   const getState = useCallback((): AuthState => ({
     currentUser,
@@ -236,3 +242,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
