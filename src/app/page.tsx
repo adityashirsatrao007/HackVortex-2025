@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import Header from "@/components/shared/header";
 import Link from "next/link";
@@ -15,7 +16,7 @@ export default function LandingPage() {
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
-                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
+                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-7xl/none text-primary">
                     Connect with Skilled Artisans, Instantly.
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
@@ -37,7 +38,7 @@ export default function LandingPage() {
                 data-ai-hint="artisans tools"
                 width={600}
                 height={400}
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square shadow-lg"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square border border-border shadow-xl"
               />
             </div>
           </div>
@@ -56,7 +57,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-8 w-8 text-primary" />
                   <h3 className="text-lg font-bold">Verified Artisans</h3>
@@ -65,7 +66,7 @@ export default function LandingPage() {
                   All artisans are verified for your safety and peace of mind. (Aadhaar, Selfie + GPS).
                 </p>
               </div>
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-8 w-8 text-primary" />
                   <h3 className="text-lg font-bold">Location-Based Search</h3>
@@ -74,7 +75,7 @@ export default function LandingPage() {
                   Find skilled professionals near you with our easy-to-use map interface.
                 </p>
               </div>
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
                 <div className="flex items-center gap-2">
                    <Star className="h-8 w-8 text-primary" />
                   <h3 className="text-lg font-bold">Ratings & Reviews</h3>

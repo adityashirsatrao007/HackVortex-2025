@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -111,13 +112,15 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold mb-2">Account Settings</h3>
             <div className="space-y-2">
                 <Button variant="outline">Change Password</Button>
-                <Button variant="destructiveOutline" className="ml-2">Delete Account</Button>
+                <Button variant="destructive" className="ml-2">Delete Account</Button> {/* Changed to destructive for more visual cue */}
             </div>
           </div>
 
         </CardContent>
         <CardFooter>
-            <Button className="bg-primary hover:bg-primary/90">Save Changes</Button>
+            <div className="flex justify-end w-full">
+                <Button className="bg-primary hover:bg-primary/90">Save Changes</Button>
+            </div>
         </CardFooter>
       </Card>
     </div>

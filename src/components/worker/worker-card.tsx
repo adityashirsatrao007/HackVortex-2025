@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -20,8 +21,8 @@ export function WorkerCard({ worker, className, isSelected, onSelect }: WorkerCa
   return (
     <Card 
       className={cn(
-        "overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200", 
-        isSelected && "ring-2 ring-primary shadow-lg",
+        "overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 ease-in-out", 
+        isSelected && "ring-2 ring-primary shadow-xl", // Increased shadow for selected
         className
       )}
       onClick={() => onSelect?.(worker.id)}

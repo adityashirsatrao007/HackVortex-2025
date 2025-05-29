@@ -14,9 +14,10 @@ interface NavLinkProps {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
+  isDesktop?: boolean;
 }
 
-const NavLink = ({ href, children, className, onClick }: NavLinkProps) => {
+const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps) => {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -25,8 +26,13 @@ const NavLink = ({ href, children, className, onClick }: NavLinkProps) => {
       <a
         onClick={onClick}
         className={cn(
-          'text-sm font-medium transition-colors hover:text-primary',
-          isActive ? 'text-primary' : 'text-muted-foreground',
+          'text-sm font-medium transition-colors',
+          isDesktop 
+            ? 'hover:text-primary hover:bg-accent/10 px-3 py-2 rounded-md' 
+            : 'hover:text-primary',
+          isActive 
+            ? (isDesktop ? 'text-primary bg-accent/15 font-semibold' : 'text-primary font-semibold') 
+            : 'text-muted-foreground',
           className
         )}
       >
@@ -45,9 +51,9 @@ export default function Header() {
 
   const navItems = isAuthenticated
     ? [
-        { href: '/dashboard', label: 'Dashboard', icon: <Briefcase className="h-4 w-4" /> },
-        { href: '/bookings', label: 'Bookings', icon: <ListChecks className="h-4 w-4" /> },
-        { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4" /> },
+        { href: '/dashboard', label: 'Dashboard', icon: <Briefcase className="h-4 w-4 mr-2 md:mr-0" /> },
+        { href: '/bookings', label: 'Bookings', icon: <ListChecks className="h-4 w-4 mr-2 md:mr-0" /> },
+        { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ]
     : [];
 
@@ -56,14 +62,14 @@ export default function Header() {
       <div className="container flex h-16 items-center justify-between">
         <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
           <Handshake className="h-7 w-7 text-primary" />
-          <span className="text-xl font-bold text-foreground">Karigar Kart</span>
+          <span className="text-2xl font-bold text-foreground">Karigar Kart</span>
         </Link>
 
         {/* Desktop Navigation */}
         {isAuthenticated && (
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-1 md:flex"> {/* Reduced gap for tighter link spacing with padding */}
             {navItems.map((item) => (
-              <NavLink key={item.href} href={item.href}>
+              <NavLink key={item.href} href={item.href} isDesktop>
                 {item.label}
               </NavLink>
             ))}
@@ -92,13 +98,18 @@ export default function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right">
-                <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-col gap-1 p-4"> {/* Reduced gap for menu items */}
                   <Link href={isAuthenticated ? "/dashboard" : "/"} className="mb-4 flex items-center gap-2" onClick={closeSheet} prefetch={false}>
                      <Handshake className="h-7 w-7 text-primary" />
                     <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
                   {navItems.map((item) => (
-                    <NavLink key={item.href} href={item.href} className="flex items-center gap-2 text-base" onClick={closeSheet}>
+                    <NavLink 
+                      key={item.href} 
+                      href={item.href} 
+                      className="flex items-center gap-2 text-base px-3 py-3 rounded-md" // Added padding and rounded for mobile
+                      onClick={closeSheet}
+                    >
                       {item.icon}
                       {item.label}
                     </NavLink>
