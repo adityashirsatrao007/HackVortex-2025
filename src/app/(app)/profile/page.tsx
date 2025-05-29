@@ -24,11 +24,11 @@ export default function ProfilePage() {
   const { toast } = useToast(); 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isNewUser = searchParams.get('new') === 'true' && !isProfileComplete;
+  const isNewUserFlow = searchParams.get('new') === 'true' && !isProfileComplete; // True if it's a new user needing to complete profile
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [address, setAddress] = useState(''); // Customer specific
+  const [address, setAddress] = useState(''); // Customer specific OR Worker location string
   const [skillsInput, setSkillsInput] = useState(''); // Worker specific
   const [hourlyRateInput, setHourlyRateInput] = useState<number | string>(''); // Worker specific
   const [bio, setBio] = useState(''); // Worker specific
@@ -47,8 +47,7 @@ export default function ProfilePage() {
           setSkillsInput(existingWorker.skills?.join(', ') || '');
           setHourlyRateInput(existingWorker.hourlyRate?.toString() || '');
           setBio(existingWorker.bio || '');
-          // For worker, address can be their primary service area string
-          setAddress(existingWorker.location ? `${existingWorker.location.lat}, ${existingWorker.location.lng}` : (existingWorker as any).address || '');
+          setAddress((existingWorker as any).address || ''); // String address for worker
           if(existingWorker.avatarUrl) setAvatarUrl(existingWorker.avatarUrl);
         } else {
           // New worker, fields remain empty or default
@@ -73,63 +72,63 @@ export default function ProfilePage() {
   const handleSaveChanges = () => {
     if (!currentUser || !userAppRole) return;
 
-    // Update MOCK data (simulating DB save)
-    if (userAppRole === 'worker') {
-      const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email);
-      const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
-      
-      if (isNewUser || !isProfileComplete) {
+    // Validation for new user profile completion
+    if (isNewUserFlow || !isProfileComplete) {
+      if (userAppRole === 'customer') {
+        if (!address.trim()) {
+          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
+          return;
+        }
+      } else if (userAppRole === 'worker') {
+        const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
         if (parsedSkills.length === 0) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill." });
+          toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill (e.g., plumber, electrician)." });
           return;
         }
         if (!bio.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
           return;
         }
-         if (!address.trim()) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area." });
+        if (!address.trim()) {
+          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
           return;
         }
       }
+    }
 
+    // Update MOCK data (simulating DB save)
+    if (userAppRole === 'worker') {
+      const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email);
+      const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
+      
       const workerData: Partial<Worker> = {
         name,
         skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || 0,
         bio,
+        avatarUrl, // ensure avatar is also updated
       };
 
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { 
             ...MOCK_WORKERS[workerIdx], 
-            ...workerData, 
-            name, 
-            avatarUrl, 
-            location: typeof MOCK_WORKERS[workerIdx].location === 'object' ? MOCK_WORKERS[workerIdx].location : { lat:0, lng:0 } 
+            ...workerData,
+            location: MOCK_WORKERS[workerIdx].location || { lat: 0, lng: 0 }, // Preserve existing location object or default
         };
-        (MOCK_WORKERS[workerIdx] as any).address = address; 
+        (MOCK_WORKERS[workerIdx] as any).address = address; // Update string address
       } else {
         MOCK_WORKERS.push({
           id: currentUser.uid,
           email: currentUser.email || '',
           role: 'worker',
-          location: { lat: 0, lng: 0 }, 
+          location: { lat: 0, lng: 0 }, // Default GeoLocation for new worker
           isVerified: false, rating: 0, totalJobs: 0,
           ...workerData,
-          name,
-          avatarUrl,
-          address: address, 
+          address: address, // String address
         } as Worker & { address?: string }); 
       }
     } else if (userAppRole === 'customer') {
       const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.email === currentUser.email);
-
-      if ((isNewUser || !isProfileComplete) && !address.trim()) {
-        toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
-        return;
-      }
-
       const customerData: Partial<Customer> = { name, address, avatarUrl };
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerData };
@@ -143,16 +142,28 @@ export default function ProfilePage() {
       }
     }
     
+    const wasProfileIncomplete = !isProfileComplete; // Check before marking complete
     markProfileComplete(); 
-    refreshAuthLoading(); 
+    refreshAuthLoading(); // This should re-evaluate isProfileComplete
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved (mock persistence).",
     });
 
-    if (isNewUser || !isProfileComplete) { 
-        router.push('/dashboard'); 
+    // Redirect only if the profile was incomplete and is now considered complete
+    // Check isProfileComplete *after* refreshAuthLoading has had a chance to update it
+    // For immediate redirect, we can assume it's complete if validation passed
+    if (wasProfileIncomplete) {
+        // A small delay to allow state updates from refreshAuthLoading, or directly check if all required fields are now met
+        setTimeout(() => {
+            const updatedIsProfileComplete = (useAuth.getState && useAuth.getState().isProfileComplete) || 
+                                             (userAppRole === 'customer' ? !!address.trim() : 
+                                              !!(skillsInput.split(',').map(s => s.trim()).filter(Boolean).length > 0 && bio.trim() && address.trim()));
+            if (updatedIsProfileComplete) {
+                router.push('/dashboard');
+            }
+        }, 100); // A small delay might be needed for auth context to update
     }
   };
 
@@ -162,8 +173,8 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      {isNewUser && (
-        <Alert variant="default" className="bg-primary/10 border-primary/30">
+      {isNewUserFlow && (
+        <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
           <Info className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary font-semibold">Welcome to Karigar Kart!</AlertTitle>
           <AlertDescription>
@@ -230,7 +241,7 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-semibold mb-3 border-b pb-2">Worker Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                     <div className="space-y-1.5">
-                        <Label htmlFor="skills">Skills (comma-separated, e.g., plumber, electrician)</Label>
+                        <Label htmlFor="skills">Skills (comma-separated)</Label>
                         <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="plumber, electrician" />
                          <p className="text-xs text-muted-foreground pt-1">Available: {SERVICE_CATEGORIES.map(s => s.label).join(', ')}</p>
                     </div>

@@ -10,7 +10,7 @@ import { WorkerCard } from '@/components/worker/worker-card';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, ShieldCheck, Briefcase, TrendingUp, CheckSquare } from 'lucide-react';
+import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-react';
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
@@ -56,10 +56,10 @@ export default function DashboardPage() {
             <CardDescription>Your current job statistics and alerts.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert className="mb-6 bg-blue-50 border-blue-200">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertTitle className="text-blue-700">Dashboard Coming Soon!</AlertTitle>
-              <AlertDescription className="text-blue-600">
+            <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700/50">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertTitle className="text-blue-700 dark:text-blue-300">Dashboard Coming Soon!</AlertTitle>
+              <AlertDescription className="text-blue-600 dark:text-blue-400">
                 More features like earnings reports and performance analytics are under construction.
                 For now, please use the "Schedule" and "Profile" sections to manage your work.
               </AlertDescription>
@@ -87,8 +87,8 @@ export default function DashboardPage() {
                 </Card>
                  <Card className="bg-secondary/40 hover:shadow-lg transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Jobs Completed</CardTitle>
-                        <TrendingUp className="h-5 w-5 text-green-600" />
+                        <CardTitle className="text-sm font-medium">Jobs Completed (This Month)</CardTitle>
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">0</div>
@@ -139,21 +139,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Add this to your globals.css or a relevant CSS file if you want custom scrollbars for the worker list
-/*
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: hsl(var(--secondary) / 0.5);
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.7);
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
-}
-*/
