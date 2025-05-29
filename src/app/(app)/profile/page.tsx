@@ -20,11 +20,11 @@ import { Info } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { currentUser, userAppRole, markProfileComplete, refreshAuthLoading } = useAuth(); 
+  const { currentUser, userAppRole, markProfileComplete, refreshAuthLoading, isProfileComplete } = useAuth(); 
   const { toast } = useToast(); 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isNewUser = searchParams.get('new') === 'true';
+  const isNewUser = searchParams.get('new') === 'true' && !isProfileComplete;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -47,7 +47,8 @@ export default function ProfilePage() {
           setSkillsInput(existingWorker.skills?.join(', ') || '');
           setHourlyRateInput(existingWorker.hourlyRate?.toString() || '');
           setBio(existingWorker.bio || '');
-          setAddress(existingWorker.location ? `${existingWorker.location.lat}, ${existingWorker.location.lng}` : ''); // Or a more user-friendly address
+          // For worker, address can be their primary service area string
+          setAddress(existingWorker.location ? `${existingWorker.location.lat}, ${existingWorker.location.lng}` : (existingWorker as any).address || '');
           if(existingWorker.avatarUrl) setAvatarUrl(existingWorker.avatarUrl);
         } else {
           // New worker, fields remain empty or default
@@ -75,32 +76,69 @@ export default function ProfilePage() {
     // Update MOCK data (simulating DB save)
     if (userAppRole === 'worker') {
       const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email);
+      const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
+      
+      // Basic validation for worker fields if it's a new profile submission
+      if (isNewUser || !isProfileComplete) {
+        if (parsedSkills.length === 0) {
+          toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill." });
+          return;
+        }
+        if (!bio.trim()) {
+          toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
+          return;
+        }
+         if (!address.trim()) {
+          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area." });
+          return;
+        }
+      }
+
       const workerData: Partial<Worker> = {
         name,
-        // email, // Email update usually handled by Firebase Auth methods separately
-        skills: skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => s),
+        skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || 0,
         bio,
-        // For location, simple address string. Geocoding would be needed for lat/lng
-        // For now, we'll just store the address string as a location preview or part of bio for simplicity
+        // For location, we'll treat the address string as a placeholder for location.
+        // In a real app, this would involve geocoding to get lat/lng.
+        // For now, let's store it as a simple string in MOCK_WORKERS if it's not already an object.
+        // This part is a bit tricky with mock data, we assume 'address' field can be used for location string for now.
       };
+
       if (workerIdx > -1) {
-        MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerData, name, avatarUrl };
+        MOCK_WORKERS[workerIdx] = { 
+            ...MOCK_WORKERS[workerIdx], 
+            ...workerData, 
+            name, 
+            avatarUrl, 
+            // If location was an object, keep it, otherwise update with address string as a simple text location
+            // This logic is simplified for mock data.
+            location: typeof MOCK_WORKERS[workerIdx].location === 'object' ? MOCK_WORKERS[workerIdx].location : { lat:0, lng:0 } // Placeholder for actual geocoded location
+        };
+        // If address was meant to be textual location, update it on the worker object directly
+        // This is a mock data handling strategy.
+        (MOCK_WORKERS[workerIdx] as any).address = address; 
       } else {
-        // This case should ideally be handled at signup, but as a fallback:
         MOCK_WORKERS.push({
           id: currentUser.uid,
           email: currentUser.email || '',
           role: 'worker',
-          location: { lat: 0, lng: 0 }, // Default location
+          location: { lat: 0, lng: 0 }, // Default/placeholder location for new worker
           isVerified: false, rating: 0, totalJobs: 0,
           ...workerData,
           name,
           avatarUrl,
-        } as Worker);
+          address: address, // Storing the address string for new workers
+        } as Worker & { address?: string }); // Extend type for mock
       }
     } else if (userAppRole === 'customer') {
       const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.email === currentUser.email);
+
+      if ((isNewUser || !isProfileComplete) && !address.trim()) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
+        return;
+      }
+
       const customerData: Partial<Customer> = { name, address, avatarUrl };
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerData };
@@ -114,16 +152,16 @@ export default function ProfilePage() {
       }
     }
     
-    markProfileComplete(); // Notify AuthContext
-    refreshAuthLoading(); // Re-trigger loading in AuthContext to re-evaluate profile completion
+    markProfileComplete(); 
+    refreshAuthLoading(); 
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved (mock persistence).",
     });
 
-    if (isNewUser) {
-        router.push('/dashboard'); // Navigate to dashboard after initial profile setup
+    if (isNewUser || !isProfileComplete) { // Check against AuthContext's isProfileComplete as well
+        router.push('/dashboard'); 
     }
   };
 
@@ -156,11 +194,11 @@ export default function ProfilePage() {
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center gap-4">
           <Avatar className="h-24 w-24 border-2 border-primary">
             <AvatarImage src={avatarUrl} alt={name} data-ai-hint="person avatar" />
-            <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{name ? name.substring(0, 2).toUpperCase() : 'KK'}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <CardTitle className="text-2xl">{name || "Your Name"}</CardTitle>
-            <CardDescription className="capitalize">{userAppRole}</CardDescription>
+            <CardDescription className="capitalize">{userAppRole || "User"}</CardDescription>
             {/* Avatar editing can be complex, placeholder for now */}
             <Button variant="outline" size="sm" className="mt-2" onClick={() => toast({title: "Feature Coming Soon", description: "Avatar editing will be available later."})}>
               <Edit3 className="mr-2 h-3 w-3" /> Edit Profile Picture
@@ -177,18 +215,18 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={email} readOnly className="bg-muted/30 cursor-not-allowed" title="Email is managed by your authentication provider." />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." />
               </div>
               
               {userAppRole === 'customer' && (
                  <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown"/>
+                    <Label htmlFor="addressCustomer">Address</Label>
+                    <Input id="addressCustomer" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown"/>
                 </div>
               )}
                {userAppRole === 'worker' && ( 
                  <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="addressWorker">Primary Location (City/Area)</Label>
+                    <Label htmlFor="addressWorker">Primary Location / Area (City/Area)</Label>
                     <Input id="addressWorker" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore (This helps customers find you)" />
                 </div>
               )}
@@ -202,8 +240,9 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-semibold mb-2">Worker Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div className="space-y-1">
-                        <Label htmlFor="skills">Skills (comma-separated)</Label>
-                        <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="e.g., plumber, electrician" />
+                        <Label htmlFor="skills">Skills (comma-separated, e.g., plumber, electrician)</Label>
+                        <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="plumber, electrician" />
+                         <p className="text-xs text-muted-foreground">Available: {SERVICE_CATEGORIES.map(s => s.label).join(', ')}</p>
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="hourlyRate">Hourly Rate (₹)</Label>
@@ -214,11 +253,11 @@ export default function ProfilePage() {
                         <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience (e.g., years of experience, specializations)." className="min-h-[80px]"/>
                     </div>
                      <div className="flex items-center space-x-2">
-                        <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.email === currentUser.email))?.isVerified || false} disabled />
+                        <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.email === currentUser?.email))?.isVerified || false} disabled />
                         <Label htmlFor="availability">Profile Verified (Admin)</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.email === currentUser.email))?.aadhaarVerified || false} disabled />
+                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.email === currentUser?.email))?.aadhaarVerified || false} disabled />
                         <Label htmlFor="aadhaarVerified">Aadhaar Verified (Admin)</Label>
                     </div>
                 </div>
@@ -247,3 +286,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
