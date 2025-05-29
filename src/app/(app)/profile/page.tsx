@@ -51,7 +51,6 @@ export default function ProfilePage() {
           setAddress((existingWorker as any).address || '');
           if(existingWorker.avatarUrl) setAvatarUrl(existingWorker.avatarUrl);
         } else {
-          // New worker, some fields may have been set by signup context
           const tempWorker = MOCK_WORKERS.find(w => w.id === currentUser.uid);
           setUsername(tempWorker?.username || '');
           setSkillsInput('');
@@ -66,7 +65,6 @@ export default function ProfilePage() {
           setAddress(existingCustomer.address || '');
           if(existingCustomer.avatarUrl) setAvatarUrl(existingCustomer.avatarUrl);
         } else {
-          // New customer
           const tempCustomer = MOCK_CUSTOMERS.find(c => c.id === currentUser.uid);
           setUsername(tempCustomer?.username || '');
           setAddress('');
@@ -100,6 +98,17 @@ export default function ProfilePage() {
         }
       }
     }
+    
+    // Uniqueness check for username on save (simplified for mock)
+    const usernameLower = username.toLowerCase();
+    const isUsernameTaken = MOCK_WORKERS.some(w => w.email !== currentUser.email && w.username.toLowerCase() === usernameLower) ||
+                           MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.username.toLowerCase() === usernameLower);
+
+    if (isUsernameTaken) {
+        toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use. Please choose another." });
+        return;
+    }
+
 
     if (userAppRole === 'worker') {
       const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email);
@@ -107,7 +116,7 @@ export default function ProfilePage() {
       
       const workerData: Partial<Worker> = {
         name,
-        username, // Ensure username is part of the update, though it's read-only here after signup
+        username, 
         skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || 0,
         bio,
@@ -122,7 +131,6 @@ export default function ProfilePage() {
         };
         (MOCK_WORKERS[workerIdx] as any).address = address;
       } else {
-        // This case should ideally be handled by signup, but as a fallback:
         MOCK_WORKERS.push({
           id: currentUser.uid,
           email: currentUser.email || '',
@@ -131,7 +139,7 @@ export default function ProfilePage() {
           isVerified: false, rating: 0, totalJobs: 0,
           aadhaarVerified: false,
           ...workerData,
-          username: username || currentUser.uid, // fallback for username
+          username: username || currentUser.uid,
           address: address,
         } as Worker & { address?: string }); 
       }
@@ -145,7 +153,7 @@ export default function ProfilePage() {
           id: currentUser.uid,
           email: currentUser.email || '',
           role: 'customer',
-          username: username || currentUser.uid, // fallback for username
+          username: username || currentUser.uid,
           ...customerData
         } as Customer);
       }
@@ -225,8 +233,13 @@ export default function ProfilePage() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name"/>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="username_display">Username (Read-only)</Label>
-                <Input id="username_display" value={username} readOnly className="bg-muted/30 cursor-not-allowed" title="Username cannot be changed after signup."/>
+                <Label htmlFor="username_display">Username</Label>
+                <Input 
+                    id="username_display" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)} 
+                    placeholder="Your unique username"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email Address</Label>
