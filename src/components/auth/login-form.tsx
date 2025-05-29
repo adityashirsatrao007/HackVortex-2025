@@ -48,7 +48,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-            <KarigarKartToolboxLogoIcon className="h-12 w-12 text-primary" />
+            <KarigarKartToolboxLogoIcon className="h-10 w-10 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
         <CardDescription>Log in to your Karigar Kart account.</CardDescription>
