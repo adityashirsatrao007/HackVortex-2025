@@ -11,42 +11,39 @@ export const KarigarKartLogoIcon: React.FC<KarigarKartLogoIconProps> = ({ classN
     width="24"
     height="24"
     viewBox="0 0 24 24"
-    className={className} // Apply className for sizing and color
-    {...rest} // Spread other SVG props
+    fill="none" // Default to no fill for paths unless specified
+    stroke="currentColor" // Default stroke color
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...rest}
   >
-    {/* Cart basket outline */}
+    {/* Cart basket outline - Bolder */}
     <path
       d="M5.5 5.5H7L9.125 14.5H16.875L19 5.5H20.5"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      strokeWidth="2" // Increased from 1.5
+      fill="none" 
     />
-    {/* Wheels - made them filled and part of the main color */}
-    <circle cx="9" cy="18.5" r="1.5" stroke="currentColor" fill="currentColor" strokeWidth="1.5" />
-    <circle cx="17" cy="18.5" r="1.5" stroke="currentColor" fill="currentColor" strokeWidth="1.5" />
-    {/* Struts to wheels */}
-    <path d="M9.125 14.5L9 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M16.875 14.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-
-    {/* Worker icon part (helmet and head) */}
-    {/* Helmet */}
+    {/* Wheels - filled, slightly larger */}
+    <circle cx="9" cy="18.5" r="1.75" strokeWidth="1.5" fill="currentColor" /> 
+    <circle cx="17" cy="18.5" r="1.75" strokeWidth="1.5" fill="currentColor" />
+    
+    {/* Worker icon part (helmet and head) - Bolder and more prominent */}
+    {/* Helmet Outline - Bolder, slightly adjusted path for better shape */}
     <path
-      d="M10.75 8C10.75 7 11.5 6.5 12.5 6.5C13.5 6.5 14.25 7 14.25 8"
-      stroke="currentColor"
-      strokeWidth="1.5"
+      d="M10.5 8.5C10.5 7.25 11.328 6.5 12.5 6.5C13.672 6.5 14.5 7.25 14.5 8.5"
+      strokeWidth="2" // Increased from 1.5
       fill="none"
-      strokeLinecap="round"
     />
-    {/* Head circle underneath helmet - filled */}
-     <circle cx="12.5" cy="9" r="1" fill="currentColor" stroke="none"/>
+    {/* Head circle underneath helmet - filled, larger */}
+    <circle cx="12.5" cy="9.75" r="1.25" fill="currentColor" stroke="none"/> 
 
-    {/* Slats inside the cart */}
-    <path d="M10.5 10.5V13.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-    <path d="M12.5 10.5V13.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-    <path d="M14.5 10.5V13.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-     {/* Cart Handle */}
-    <path d="M19 5.5V4.5C19 3.5 18.25 2.5 17.25 2.5H14.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    {/* Slats inside the cart - Bolder */}
+    <path d="M10.5 10.5V13.5" strokeWidth="2.25"/> 
+    <path d="M12.5 10.5V13.5" strokeWidth="2.25"/> 
+    <path d="M14.5 10.5V13.5" strokeWidth="2.25"/> 
+    
+    {/* Cart Handle - Bolder, slightly adjusted path */}
+    <path d="M19 5.5V4.5C19 3.4 18.1 2.5 17 2.5H14.5" strokeWidth="2" fill="none"/> 
   </svg>
 );
