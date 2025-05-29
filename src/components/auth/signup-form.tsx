@@ -19,12 +19,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth"; 
-import { UserPlus, Loader2, Eye, EyeOff } from "lucide-react"; 
+import { UserPlus, Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react"; 
 import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon";
-import React from "react";
+import React, { useState } from "react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { MOCK_CUSTOMERS, MOCK_WORKERS } from "@/lib/constants";
 
-// Google Icon SVG component (can be moved to a shared file if used elsewhere)
+// Google Icon SVG component
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 48 48" width="1em" height="1em" {...props}>
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -35,7 +37,7 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const signupFormSchema = z.object({
+const signupFormSchemaBase = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   username: z.string().min(3, { message: "Username must be at least 3 characters." })
     .regex(/^[a-zA-Z0-9_]+$/, { message: "Username can only contain letters, numbers, and underscores." }),
@@ -43,20 +45,32 @@ const signupFormSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
   role: z.enum(["customer", "worker"], { required_error: "You must select a role." }),
+});
+
+const signupFormSchemaWithOtp = signupFormSchemaBase.extend({
+  otp: z.string().length(6, { message: "OTP must be 6 digits." }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-type SignupFormValues = z.infer<typeof signupFormSchema>;
+const signupFormSchemaWithoutOtp = signupFormSchemaBase.refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type SignupFormValues = z.infer<typeof signupFormSchemaWithOtp>; // Use the more comprehensive type
 
 export function SignupForm() {
   const { signup, signInWithGoogle, loading } = useAuth(); 
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
 
   const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupFormSchema),
+    resolver: zodResolver(otpSent ? signupFormSchemaWithOtp : signupFormSchemaWithoutOtp),
     defaultValues: {
       name: "",
       username: "",
@@ -64,16 +78,61 @@ export function SignupForm() {
       password: "",
       confirmPassword: "",
       role: "customer" as UserRole,
+      otp: "",
     },
   });
 
   async function onSubmit(data: SignupFormValues) {
-    await signup(data.email, data.password, data.name, data.username, data.role); 
+    if (!otpSent) { // Step 1: Send OTP
+      const usernameLower = data.username.toLowerCase();
+      const usernameExistsInWorkers = MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower);
+      const usernameExistsInCustomers = MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === usernameLower);
+
+      if (usernameExistsInWorkers || usernameExistsInCustomers) {
+        form.setError("username", { type: "manual", message: "Username is already taken." });
+        toast({ variant: "destructive", title: "Signup Failed", description: "Username is already taken. Please choose another." });
+        return;
+      }
+
+      const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(mockOtp);
+      setOtpSent(true);
+      form.trigger(); // Re-trigger validation with the new schema context if needed
+      toast({
+        title: "Mock OTP Sent",
+        description: `(For testing) Your OTP is: ${mockOtp}. Please enter it below.`,
+        duration: 10000, // Keep OTP visible longer
+      });
+    } else { // Step 2: Verify OTP and complete signup
+      if (data.otp === generatedOtp) {
+        await signup(data.email, data.password, data.name, data.username, data.role);
+        // Reset OTP state after successful signup (auth context handles navigation)
+        setOtpSent(false);
+        setGeneratedOtp(null);
+        form.reset(); 
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invalid OTP",
+          description: "The OTP you entered is incorrect. Please try again.",
+        });
+        form.setError("otp", { type: "manual", message: "Invalid OTP." });
+      }
+    }
   }
 
   const handleGoogleSignUp = async () => {
     await signInWithGoogle();
   };
+
+  let buttonText = otpSent ? "Verify & Complete Signup" : "Send OTP & Continue";
+  let ButtonIconComponent = otpSent ? ShieldCheck : UserPlus;
+
+  if (loading) {
+    buttonText = otpSent ? "Verifying & Signing Up..." : "Processing...";
+    ButtonIconComponent = Loader2;
+  }
+
 
   return (
     <Card className="w-full max-w-md shadow-xl">
@@ -94,7 +153,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} disabled={loading} className="w-full" />
+                    <Input placeholder="John Doe" {...field} disabled={otpSent || loading} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -107,7 +166,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="johndoe_123" {...field} disabled={loading} className="w-full" />
+                    <Input placeholder="johndoe_123" {...field} disabled={otpSent || loading} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -120,7 +179,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} disabled={loading} className="w-full" />
+                    <Input placeholder="you@example.com" {...field} disabled={otpSent || loading} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,7 +197,7 @@ export function SignupForm() {
                         type={showPassword ? "text" : "password"} 
                         placeholder="••••••••" 
                         {...field} 
-                        disabled={loading}
+                        disabled={otpSent || loading}
                         className="w-full pr-10"
                       />
                       <Button
@@ -147,7 +206,7 @@ export function SignupForm() {
                         size="icon"
                         className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-primary"
                         onClick={() => setShowPassword(!showPassword)}
-                        disabled={loading}
+                        disabled={otpSent || loading}
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
@@ -170,7 +229,7 @@ export function SignupForm() {
                         type={showConfirmPassword ? "text" : "password"} 
                         placeholder="••••••••" 
                         {...field} 
-                        disabled={loading}
+                        disabled={otpSent || loading}
                         className="w-full pr-10"
                       />
                       <Button
@@ -179,7 +238,7 @@ export function SignupForm() {
                         size="icon"
                         className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-primary"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        disabled={loading}
+                        disabled={otpSent || loading}
                         aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                       >
                         {showConfirmPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
@@ -201,7 +260,7 @@ export function SignupForm() {
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       className="flex flex-col space-y-1"
-                      disabled={loading}
+                      disabled={otpSent || loading}
                     >
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
@@ -225,13 +284,36 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
+
+            {otpSent && (
+              <FormField
+                control={form.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enter OTP</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="6-digit OTP" 
+                        {...field} 
+                        disabled={loading} 
+                        className="w-full"
+                        maxLength={6}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-md hover:shadow-lg transition-all" 
               disabled={loading}
             >
-              {loading ? <Loader2 className="animate-spin" /> : <UserPlus />}
-              {loading ? "Signing up..." : "Sign Up"}
+              <ButtonIconComponent className={loading ? "animate-spin" : ""} />
+              {buttonText}
             </Button>
           </form>
         </Form>
@@ -246,7 +328,7 @@ export function SignupForm() {
           variant="outline" 
           className="w-full shadow-sm hover:shadow-md" 
           onClick={handleGoogleSignUp} 
-          disabled={loading}
+          disabled={loading || otpSent} // Disable Google sign-up if OTP flow is active
         >
           <GoogleIcon className="mr-2 h-5 w-5" />
           Sign up with Google
