@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth"; // Import useAuth
-import { Handshake, LogIn, Loader2 } from "lucide-react"; // Added Loader2
+import { ShoppingCart, LogIn, Loader2 } from "lucide-react"; // Added Loader2, changed Handshake to ShoppingCart
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -44,7 +44,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-            <Handshake className="h-12 w-12 text-primary" />
+            <ShoppingCart className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
         <CardDescription>Log in to your Karigar Kart account.</CardDescription>

@@ -19,7 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth"; 
-import { Handshake, UserPlus, Loader2 } from "lucide-react"; 
+import { ShoppingCart, UserPlus, Loader2 } from "lucide-react"; // Changed Handshake to ShoppingCart
 
 const signupFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -55,7 +55,7 @@ export function SignupForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-             <Handshake className="h-12 w-12 text-primary" />
+             <ShoppingCart className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
         <CardDescription>Join Karigar Kart today to find or offer services.</CardDescription>
