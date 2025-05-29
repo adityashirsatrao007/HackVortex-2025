@@ -1,5 +1,5 @@
 
-import type { ServiceCategory, Worker, Booking, Review, Customer } from './types';
+import type { ServiceCategory, Worker, Booking, Review, Customer, UserRole } from './types';
 
 export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
   { value: 'plumber', label: 'Plumber' },
@@ -134,6 +134,20 @@ export function saveCustomersToLocalStorage() {
   }
 }
 
+export function saveUserRoleToLocalStorage(userId: string, role: UserRole) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`userRole_${userId}`, role);
+  }
+}
+
+export function loadUserRoleFromLocalStorage(userId: string): UserRole | null {
+  if (typeof window !== 'undefined') {
+    const role = localStorage.getItem(`userRole_${userId}`);
+    return role ? role as UserRole : null;
+  }
+  return null;
+}
+
 
 export const MOCK_REVIEWS: Review[] = [
   {
@@ -221,5 +235,3 @@ export const MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
-
-    

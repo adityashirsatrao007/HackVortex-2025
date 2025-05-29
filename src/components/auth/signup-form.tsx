@@ -15,27 +15,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+// RadioGroup import removed as role selection is removed from this form
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { UserRole } from "@/lib/types";
+// UserRole type import removed
 import { useAuth } from "@/hooks/use-auth"; 
 import { UserPlus, Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react"; 
 import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon";
 import React, { useState } from "react";
-import { Separator } from "@/components/ui/separator";
+// Separator import removed
 import { useToast } from "@/hooks/use-toast";
 import { MOCK_CUSTOMERS, MOCK_WORKERS } from "@/lib/constants";
 
-// Google Icon SVG component
-const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 48 48" width="1em" height="1em" {...props}>
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-    <path fill="none" d="M0 0h48v48H0z"></path>
-  </svg>
-);
 
 const signupFormSchemaBase = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -44,7 +34,7 @@ const signupFormSchemaBase = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
-  role: z.enum(["customer", "worker"], { required_error: "You must select a role." }),
+  // role field removed from base schema
 });
 
 const signupFormSchemaWithOtp = signupFormSchemaBase.extend({
@@ -59,10 +49,10 @@ const signupFormSchemaWithoutOtp = signupFormSchemaBase.refine(data => data.pass
   path: ["confirmPassword"],
 });
 
-type SignupFormValues = z.infer<typeof signupFormSchemaWithOtp>; // Use the more comprehensive type
+type SignupFormValues = z.infer<typeof signupFormSchemaWithOtp>;
 
 export function SignupForm() {
-  const { signup, signInWithGoogle, loading } = useAuth(); 
+  const { signup, loading } = useAuth(); 
   const { toast } = useToast();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
@@ -77,13 +67,13 @@ export function SignupForm() {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "customer" as UserRole,
+      // role default removed
       otp: "",
     },
   });
 
   async function onSubmit(data: SignupFormValues) {
-    if (!otpSent) { // Step 1: Send OTP
+    if (!otpSent) { 
       const usernameLower = data.username.toLowerCase();
       const usernameExistsInWorkers = MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower);
       const usernameExistsInCustomers = MOCK_CUSTOMERS.some(c => c.username.toLowerCase() === usernameLower);
@@ -97,16 +87,15 @@ export function SignupForm() {
       const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(mockOtp);
       setOtpSent(true);
-      form.trigger(); // Re-trigger validation with the new schema context if needed
+      form.trigger(); 
       toast({
         title: "Mock OTP Sent",
         description: `(For testing) Your OTP is: ${mockOtp}. Please enter it below.`,
-        duration: 10000, // Keep OTP visible longer
+        duration: 10000, 
       });
-    } else { // Step 2: Verify OTP and complete signup
+    } else { 
       if (data.otp === generatedOtp) {
-        await signup(data.email, data.password, data.name, data.username, data.role);
-        // Reset OTP state after successful signup (auth context handles navigation)
+        await signup(data.email, data.password, data.name, data.username); // Role removed from signup call
         setOtpSent(false);
         setGeneratedOtp(null);
         form.reset(); 
@@ -120,10 +109,6 @@ export function SignupForm() {
       }
     }
   }
-
-  const handleGoogleSignUp = async () => {
-    await signInWithGoogle();
-  };
 
   let buttonText = otpSent ? "Verify & Complete Signup" : "Send OTP & Continue";
   let ButtonIconComponent = otpSent ? ShieldCheck : UserPlus;
@@ -141,7 +126,7 @@ export function SignupForm() {
              <KarigarKartToolboxLogoIcon className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
-        <CardDescription>Join Karigar Kart today to find or offer services.</CardDescription>
+        <CardDescription>Join Karigar Kart today.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -249,41 +234,8 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>I am a...</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-1"
-                      disabled={otpSent || loading}
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="customer" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Customer (Looking for services)
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="worker" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Artisan/Worker (Offering services)
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {/* Role selection RadioGroup removed */}
 
             {otpSent && (
               <FormField
@@ -318,21 +270,7 @@ export function SignupForm() {
           </form>
         </Form>
 
-        <div className="my-6 flex items-center">
-          <Separator className="flex-1" />
-          <span className="mx-4 text-xs text-muted-foreground shrink-0">OR SIGN UP WITH</span>
-          <Separator className="flex-1" />
-        </div>
-
-        <Button 
-          variant="outline" 
-          className="w-full shadow-sm hover:shadow-md" 
-          onClick={handleGoogleSignUp} 
-          disabled={loading || otpSent} // Disable Google sign-up if OTP flow is active
-        >
-          <GoogleIcon className="mr-2 h-5 w-5" />
-          Sign up with Google
-        </Button>
+        {/* Removed Google Sign-Up Button and Separator */}
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
