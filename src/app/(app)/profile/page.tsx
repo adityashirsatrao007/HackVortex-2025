@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,14 +27,21 @@ export default function ProfilePage() {
     markProfileComplete, 
     isProfileComplete: authContextIsProfileComplete, 
     selectUserRoleAndInitializeProfile, 
-    loading: authLoading // Renamed to avoid conflict if local loading state is added
+    loading: authLoading 
   } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const needsRoleSelection = searchParams.get('roleSelection') === 'true' || !userAppRole;
-  const isNewUserCompletionFlow = searchParams.get('new') === 'true' && !authContextIsProfileComplete;
+  // Memoize initial page load conditions
+  const needsRoleSelectionAtPageLoad = useMemo(() => {
+    return searchParams.get('roleSelection') === 'true' || !userAppRole;
+  }, [searchParams, userAppRole]);
+
+  const isNewUserCompletionFlowAtPageLoad = useMemo(() => {
+    return searchParams.get('new') === 'true' && !authContextIsProfileComplete;
+  }, [searchParams, authContextIsProfileComplete]);
+
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -45,9 +52,8 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://placehold.co/128x128.png');
   
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null); // For UI before confirming
   const [isSaving, setIsSaving] = useState(false);
-
 
   useEffect(() => {
     if (currentUser) {
@@ -55,7 +61,8 @@ export default function ProfilePage() {
       setEmail(currentUser.email || '');
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
 
-      if (userAppRole) { // If role is already determined by AuthContext
+      if (userAppRole) { 
+        setSelectedRoleForUi(userAppRole); // Sync UI role with context role
         let userProfile;
         if (userAppRole === 'worker') {
           userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
@@ -75,66 +82,71 @@ export default function ProfilePage() {
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           }
         }
-        // If no profile found in mocks (e.g. new user who selected role but hasn't saved details yet)
-        // fields will remain as initialized or from currentUser.
         if (!userProfile && (username === '' || username === currentUser.uid)) {
            setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
         }
       } else {
-        // User needs to select a role, prefill username if possible
          setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
+         setSelectedRoleForUi(null); // Ensure UI role is reset if context role is null
       }
     }
-  }, [currentUser, userAppRole]);
+  }, [currentUser, userAppRole]); // Removed username from dependencies to prevent loop
+
+  // Effect for redirection after profile becomes complete
+  useEffect(() => {
+    if (authContextIsProfileComplete && (isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad)) {
+        router.push('/dashboard');
+    }
+  }, [authContextIsProfileComplete, isNewUserCompletionFlowAtPageLoad, needsRoleSelectionAtPageLoad, router]);
 
 
   const handleConfirmRole = async () => {
-    if (!selectedRole || !currentUser) {
+    if (!selectedRoleForUi || !currentUser) {
       toast({ variant: "destructive", title: "Error", description: "Please select a role." });
       return;
     }
     setIsSaving(true);
-    await selectUserRoleAndInitializeProfile(selectedRole);
+    await selectUserRoleAndInitializeProfile(selectedRoleForUi);
     // userAppRole in AuthContext will update, triggering useEffect above to populate fields or keep them empty
-    // The page will re-render, and `shouldShowRoleSelection` will become false.
+    // The page will re-render, and `userAppRole` will be set, hiding the role selection UI.
     setIsSaving(false);
     // No explicit redirect here, the page re-renders to show profile fields.
-    // User then fills details and clicks "Save Changes".
   };
 
   const handleSaveChanges = async () => {
-    if (!currentUser || !userAppRole) { // Role must be set by now
-      toast({ variant: "destructive", title: "Error", description: "User role not set." });
+    if (!currentUser || !userAppRole) { 
+      toast({ variant: "destructive", title: "Error", description: "User role not set. Please select a role first if prompted." });
       return;
     }
     setIsSaving(true);
 
-    // Validation for profile completion
-    if (!authContextIsProfileComplete || isNewUserCompletionFlow || needsRoleSelection) {
+    let profileDataIsValid = true;
+    if (!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad) {
       if (userAppRole === 'customer') {
         if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
-          setIsSaving(false);
-          return;
+          profileDataIsValid = false;
         }
       } else if (userAppRole === 'worker') {
         const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
         if (parsedSkills.length === 0) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill (e.g., plumber, electrician)." });
-          setIsSaving(false);
-          return;
+          profileDataIsValid = false;
         }
         if (!bio.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
-          setIsSaving(false);
-          return;
+          profileDataIsValid = false;
         }
-        if (!address.trim()) {
+        if (!address.trim()) { // Assuming address is now also mandatory for workers
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
-          setIsSaving(false);
-          return;
+          profileDataIsValid = false;
         }
       }
+    }
+    
+    if (!profileDataIsValid) {
+        setIsSaving(false);
+        return;
     }
 
     const usernameLower = username.toLowerCase();
@@ -155,35 +167,40 @@ export default function ProfilePage() {
       const workerDataUpdate = {
         name, username, skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
-        bio, avatarUrl, address,
+        bio, avatarUrl, address, email // ensure email is saved if it was made editable
       };
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
-      } else { /* Should not happen if selectUserRoleAndInitializeProfile ran */ }
+      } else { 
+        // This case should ideally not happen if selectUserRoleAndInitializeProfile worked correctly
+        MOCK_WORKERS.push({
+            id: currentUser.uid,
+            location: { lat: 0, lng: 0 }, 
+            isVerified: false, rating: 0, aadhaarVerified: false, 
+            ...workerDataUpdate, 
+            role: 'worker'
+        });
+      }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
       const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid);
-      const customerDataUpdate = { name, username, address, avatarUrl };
+      const customerDataUpdate = { name, username, address, avatarUrl, email };
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate, role: 'customer' };
-      } else { /* Should not happen */ }
+      } else { 
+        MOCK_CUSTOMERS.push({ id: currentUser.uid, ...customerDataUpdate, role: 'customer' });
+      }
       saveCustomersToLocalStorage();
     }
     
-    const profileWasInitiallyIncomplete = !authContextIsProfileComplete;
-    markProfileComplete(); // This re-evaluates isProfileComplete in AuthContext
+    markProfileComplete(); 
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
-
-    // Check current state from AuthContext after markProfileComplete has run
-    const currentAuthState = getState();
-    if (currentAuthState.isProfileComplete && (profileWasInitiallyIncomplete || isNewUserCompletionFlow || needsRoleSelection)) {
-      router.push('/dashboard');
-    }
+    // Redirection is now handled by the useEffect hook listening to authContextIsProfileComplete
   };
 
   if (authLoading) {
@@ -196,11 +213,9 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    // This should be handled by AppLayout redirecting to login
     return <p className="text-center py-10 text-muted-foreground">User not found. Redirecting to login...</p>;
   }
 
-  // If user is logged in, but role is not yet set in AuthContext, show role selection UI
   if (!userAppRole) {
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
@@ -217,7 +232,7 @@ export default function ProfilePage() {
             <CardDescription>Are you looking for services or offering them?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RadioGroup value={selectedRole || ""} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+            <RadioGroup value={selectedRoleForUi || ""} onValueChange={(value) => setSelectedRoleForUi(value as UserRole)}>
               <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary">
                 <RadioGroupItem value="customer" id="role-customer" />
                 <Label htmlFor="role-customer" className="flex-1 cursor-pointer">
@@ -235,7 +250,7 @@ export default function ProfilePage() {
             </RadioGroup>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleConfirmRole} disabled={!selectedRole || isSaving} className="w-full">
+            <Button onClick={handleConfirmRole} disabled={!selectedRoleForUi || isSaving} className="w-full">
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm Role & Continue
             </Button>
@@ -245,10 +260,12 @@ export default function ProfilePage() {
     );
   }
 
-  // If role is selected (userAppRole is not null), render the main profile form
+  // If role is selected, render the main profile form
+  const showIncompleteProfileAlert = (isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole && !authContextIsProfileComplete));
+
   return (
     <div className="space-y-8">
-      {(isNewUserCompletionFlow || (needsRoleSelection && userAppRole && !authContextIsProfileComplete)) && (
+      {showIncompleteProfileAlert && (
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
           <Info className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary font-semibold">Complete Your Profile!</AlertTitle>
@@ -270,7 +287,7 @@ export default function ProfilePage() {
       <Card className="shadow-xl">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center gap-4 p-6">
           <Avatar className="h-24 w-24 border-4 border-primary/70 shadow-md">
-            <AvatarImage src={avatarUrl} alt={name} data-ai-hint="person avatar" />
+            <AvatarImage src={avatarUrl} alt={name} data-ai-hint="person avatar"/>
             <AvatarFallback>{name ? name.substring(0, 2).toUpperCase() : 'KK'}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
@@ -311,13 +328,13 @@ export default function ProfilePage() {
               
               {userAppRole === 'customer' && (
                  <div className="space-y-1.5">
-                    <Label htmlFor="addressCustomer">Address {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                    <Label htmlFor="addressCustomer">Address {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                     <Input id="addressCustomer" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown" disabled={isSaving}/>
                 </div>
               )}
                {userAppRole === 'worker' && (
                  <div className="space-y-1.5">
-                    <Label htmlFor="addressWorker">Primary Location / Area (City/Area) {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                    <Label htmlFor="addressWorker">Primary Location / Area (City/Area) {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                     <Input id="addressWorker" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore" disabled={isSaving}/>
                 </div>
               )}
@@ -331,7 +348,7 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-semibold mb-3 border-b pb-2 flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary"/>Worker Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                     <div className="space-y-1.5">
-                        <Label htmlFor="skills">Skills (comma-separated) {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                        <Label htmlFor="skills">Skills (comma-separated) {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                         <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="plumber, electrician" disabled={isSaving}/>
                          <p className="text-xs text-muted-foreground pt-1">Available: {SERVICE_CATEGORIES.map(s => s.label).join(', ')}</p>
                     </div>
@@ -340,7 +357,7 @@ export default function ProfilePage() {
                         <Input id="hourlyRate" type="number" value={hourlyRateInput} onChange={(e) => setHourlyRateInput(e.target.value)} placeholder="e.g., 250" disabled={isSaving}/>
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                        <Label htmlFor="bio">Bio {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                        <Label htmlFor="bio">Bio {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                         <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience..." className="min-h-[100px]" disabled={isSaving}/>
                     </div>
                      <div className="flex items-center space-x-2 pt-2">
