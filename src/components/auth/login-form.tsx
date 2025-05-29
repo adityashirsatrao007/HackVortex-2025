@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth"; 
 import { LogIn, Loader2 } from "lucide-react"; 
-import { KarigarKartLogoIcon } from "@/components/icons/karigar-kart-logo-icon"; // Updated import
+import { KarigarKartToolboxLogoIcon } from "@/components/icons/karigar-kart-toolbox-logo-icon"; // Updated import
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -45,7 +45,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-            <KarigarKartLogoIcon className="h-12 w-12 text-primary" /> {/* Updated icon */}
+            <KarigarKartToolboxLogoIcon className="h-12 w-12 text-primary" /> {/* Updated icon */}
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
         <CardDescription>Log in to your Karigar Kart account.</CardDescription>

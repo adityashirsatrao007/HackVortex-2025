@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Menu, Briefcase, ListChecks, UserCircle, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell } from 'lucide-react';
-import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon';
+import { KarigarKartToolboxLogoIcon } from '@/components/icons/karigar-kart-toolbox-logo-icon'; // Updated import
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useNotification } from '@/contexts/notification-context';
@@ -114,7 +114,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
            <Link href={currentUser ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
-            <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
+            <KarigarKartToolboxLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
         </div>
@@ -127,7 +127,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-center">
           <Link href="/" className="flex items-center gap-2" prefetch={false}>
-            <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
+            <KarigarKartToolboxLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
         </div>
@@ -140,7 +140,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 items-center justify-between">
         <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" prefetch={false}>
-          <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
+          <KarigarKartToolboxLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
 
@@ -220,7 +220,7 @@ export default function Header() {
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b mb-2">
                   <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
-                      <KarigarKartLogoIcon className="h-7 w-7 text-primary" />
+                      <KarigarKartToolboxLogoIcon className="h-7 w-7 text-primary" /> {/* Updated icon */}
                     <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
                 </div>
