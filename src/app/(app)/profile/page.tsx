@@ -21,25 +21,25 @@ import { Info, Loader2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { 
-    currentUser, 
-    userAppRole, 
-    markProfileComplete, 
-    isProfileComplete: authContextIsProfileComplete, 
-    selectUserRoleAndInitializeProfile, 
-    loading: authLoading 
+  const {
+    currentUser,
+    userAppRole,
+    markProfileComplete,
+    isProfileComplete: authContextIsProfileComplete,
+    selectUserRoleAndInitializeProfile,
+    loading: authLoading
   } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const needsRoleSelectionAtPageLoad = useMemo(() => {
-    return searchParams.get('roleSelection') === 'true' || !userAppRole;
-  }, [searchParams, userAppRole]);
+    return searchParams.get('roleSelection') === 'true' || (!!currentUser && !userAppRole);
+  }, [searchParams, userAppRole, currentUser]);
 
   const isNewUserCompletionFlowAtPageLoad = useMemo(() => {
-    return searchParams.get('new') === 'true' && !authContextIsProfileComplete;
-  }, [searchParams, authContextIsProfileComplete]);
+    return searchParams.get('new') === 'true' && !!currentUser && !!userAppRole && !authContextIsProfileComplete;
+  }, [searchParams, authContextIsProfileComplete, currentUser, userAppRole]);
 
 
   const [name, setName] = useState('');
@@ -51,53 +51,76 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://placehold.co/128x128.png');
   const [aadhaarNumberInput, setAadhaarNumberInput] = useState('');
-  
-  const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null); 
+
+  const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (currentUser) {
       setName(currentUser.displayName || '');
       setEmail(currentUser.email || '');
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
+      
+      const defaultUsername = currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`;
+      setUsername(defaultUsername); // Set a default username initially
 
-      if (userAppRole) { 
-        setSelectedRoleForUi(userAppRole); 
+      if (userAppRole) {
+        setSelectedRoleForUi(userAppRole);
         let userProfile;
         if (userAppRole === 'worker') {
-          userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
+          userProfile = MOCK_WORKERS.find(w => w.id === currentUser.uid);
           if (userProfile) {
-            setUsername(userProfile.username || currentUser.email?.split('@')[0] || '');
+            setUsername(userProfile.username || defaultUsername);
             setSkillsInput(userProfile.skills?.join(', ') || '');
             setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
             setBio(userProfile.bio || '');
             setAddress(userProfile.address || '');
             setAadhaarNumberInput(userProfile.aadhaarNumber || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
+          } else {
+            // New worker profile or profile not found in mock, ensure fields are clear
+            setSkillsInput('');
+            setHourlyRateInput('');
+            setBio('');
+            setAddress('');
+            setAadhaarNumberInput('');
           }
         } else if (userAppRole === 'customer') {
-          userProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email || c.id === currentUser.uid);
+          userProfile = MOCK_CUSTOMERS.find(c => c.id === currentUser.uid);
           if (userProfile) {
-            setUsername(userProfile.username || currentUser.email?.split('@')[0] || '');
+            setUsername(userProfile.username || defaultUsername);
             setAddress(userProfile.address || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
+          } else {
+            // New customer profile or profile not found in mock
+            setAddress('');
           }
         }
-        if (!userProfile && (username === '' || username === currentUser.uid || (currentUser.email && username === currentUser.email.split('@')[0]))) {
-           setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
-        }
       } else {
-         setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
-         setSelectedRoleForUi(null); 
+         // Role not selected yet
+         setSelectedRoleForUi(null);
+         // Clear role-specific fields
+         setAddress('');
+         setSkillsInput('');
+         setHourlyRateInput('');
+         setBio('');
+         setAadhaarNumberInput('');
       }
     }
-  }, [currentUser, userAppRole]); 
+  }, [currentUser, userAppRole, authLoading]);
+
+  const initialRedirectCheckComplete = React.useRef(false);
 
   useEffect(() => {
+    if (authLoading || !currentUser || initialRedirectCheckComplete.current) return;
+
     if (authContextIsProfileComplete && (isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad)) {
         router.push('/dashboard');
+        initialRedirectCheckComplete.current = true;
     }
-  }, [authContextIsProfileComplete, isNewUserCompletionFlowAtPageLoad, needsRoleSelectionAtPageLoad, router]);
+  }, [authLoading, currentUser, authContextIsProfileComplete, isNewUserCompletionFlowAtPageLoad, needsRoleSelectionAtPageLoad, router]);
 
 
   const handleConfirmRole = async () => {
@@ -106,19 +129,28 @@ export default function ProfilePage() {
       return;
     }
     setIsSaving(true);
-    await selectUserRoleAndInitializeProfile(selectedRoleForUi);
+    await selectUserRoleAndInitializeProfile(selectedRoleForUi, username); // Pass username
+    // After role selection, userAppRole in context updates, which should trigger the main useEffect
+    // to load/clear appropriate fields. We don't need to manually clear here.
     setIsSaving(false);
+    // No automatic redirect here; user needs to fill details and save.
+    // The page will re-render to show appropriate fields.
   };
 
   const handleSaveChanges = async () => {
-    if (!currentUser || !userAppRole) { 
+    if (!currentUser || !userAppRole) {
       toast({ variant: "destructive", title: "Error", description: "User role not set. Please select a role first if prompted." });
       return;
     }
     setIsSaving(true);
 
     let profileDataIsValid = true;
-    if (!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad) {
+    // This validation now primarily applies when completing an initially incomplete profile.
+    if (!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole)) {
+      if (!username.trim() || username.length < 3) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Username must be at least 3 characters." });
+        profileDataIsValid = false;
+      }
       if (userAppRole === 'customer') {
         if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
@@ -134,22 +166,22 @@ export default function ProfilePage() {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
           profileDataIsValid = false;
         }
-        if (!address.trim()) { 
+        if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
           profileDataIsValid = false;
         }
       }
     }
-    
+
     if (!profileDataIsValid) {
         setIsSaving(false);
         return;
     }
 
     const usernameLower = username.toLowerCase();
-    const isUsernameTakenByOther = 
-        (userAppRole === 'worker' && (MOCK_WORKERS.some(w => w.email !== currentUser.email && w.id !== currentUser.uid && w.username.toLowerCase() === usernameLower) || MOCK_CUSTOMERS.some(c => c.id !== currentUser.uid && c.username.toLowerCase() === usernameLower))) ||
-        (userAppRole === 'customer' && (MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.id !== currentUser.uid && c.username.toLowerCase() === usernameLower) || MOCK_WORKERS.some(w => w.id !== currentUser.uid && w.username.toLowerCase() === usernameLower)));
+    const isUsernameTakenByOther =
+        (MOCK_WORKERS.some(w => w.id !== currentUser.uid && w.username.toLowerCase() === usernameLower)) ||
+        (MOCK_CUSTOMERS.some(c => c.id !== currentUser.uid && c.username.toLowerCase() === usernameLower));
 
 
     if (isUsernameTakenByOther) {
@@ -164,42 +196,45 @@ export default function ProfilePage() {
       const workerDataUpdate: Partial<Worker> = {
         name, username, skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
-        bio, avatarUrl, address, email,
+        bio, avatarUrl, address, email: email || currentUser.email || '', // Ensure email is there
         aadhaarNumber: aadhaarNumberInput,
       };
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
-      } else { 
+      } else {
+         // This case should ideally be handled by selectUserRoleAndInitializeProfile
+        console.warn("Worker profile not found in MOCK_WORKERS during save, should have been initialized.");
+        // Fallback to push, though it implies an issue in initialization flow
         MOCK_WORKERS.push({
             id: currentUser.uid,
-            location: { lat: 0, lng: 0 }, 
-            isVerified: false, rating: 0, aadhaarVerified: MOCK_WORKERS[workerIdx]?.aadhaarVerified || false, 
-            ...workerDataUpdate, 
+            location: { lat: 0, lng: 0 },
+            isVerified: false, rating: 0, aadhaarVerified: false,
+            ...workerDataUpdate,
             role: 'worker'
         } as Worker);
       }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
       const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid);
-      const customerDataUpdate = { name, username, address, avatarUrl, email };
+      const customerDataUpdate: Partial<Customer> = { name, username, address, avatarUrl, email: email || currentUser.email || '' };
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate, role: 'customer' };
-      } else { 
-        MOCK_CUSTOMERS.push({ id: currentUser.uid, ...customerDataUpdate, role: 'customer' });
+      } else {
+        // This case should ideally be handled by selectUserRoleAndInitializeProfile
+        console.warn("Customer profile not found in MOCK_CUSTOMERS during save, should have been initialized.");
+        MOCK_CUSTOMERS.push({ id: currentUser.uid, ...customerDataUpdate, role: 'customer' } as Customer);
       }
       saveCustomersToLocalStorage();
     }
-    
-    markProfileComplete(); 
+
+    markProfileComplete();
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
-    if (!authContextIsProfileComplete && (isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad)) {
-        router.push('/dashboard');
-    }
+    // Redirect logic is now handled by the useEffect listening to authContextIsProfileComplete
   };
 
   if (authLoading) {
@@ -212,10 +247,21 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    return <p className="text-center py-10 text-muted-foreground">User not found. Redirecting to login...</p>;
+     // This case should ideally be handled by AppLayout redirecting to login
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <UserCircle className="h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">User not found.</p>
+            <p className="text-sm text-muted-foreground">You might need to log in.</p>
+            <Button asChild variant="link" className="mt-2">
+                <Link href="/login">Go to Login</Link>
+            </Button>
+        </div>
+    );
   }
 
-  if (!userAppRole) {
+
+  if (!userAppRole) { // Equivalent to needsRoleSelectionAtPageLoad being effectively true for UI display
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
@@ -223,6 +269,7 @@ export default function ProfilePage() {
           <AlertTitle className="text-primary font-semibold">Welcome, {currentUser.displayName || "New User"}!</AlertTitle>
           <AlertDescription>
             To get started, please tell us who you are. This will help us tailor your experience.
+            Your username will be: <strong>@{username}</strong>. You can change this on the next step if needed.
           </AlertDescription>
         </Alert>
         <Card className="shadow-xl">
@@ -259,7 +306,8 @@ export default function ProfilePage() {
     );
   }
 
-  const showIncompleteProfileAlert = (isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole && !authContextIsProfileComplete));
+  // Role is selected, show full profile form
+  const showIncompleteProfileAlert = isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole && !authContextIsProfileComplete);
 
   return (
     <div className="space-y-8">
@@ -310,20 +358,21 @@ export default function ProfilePage() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" disabled={isSaving}/>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="username_profile">Username</Label>
+                <Label htmlFor="username_profile">Username <span className="text-destructive">*</span></Label>
                 <Input
                     id="username_profile"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Your unique username"
                     disabled={isSaving}
+                    required
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email_profile">Email Address</Label>
                 <Input id="email_profile" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." disabled={isSaving}/>
               </div>
-              
+
               {userAppRole === 'customer' && (
                  <div className="space-y-1.5">
                     <Label htmlFor="addressCustomer">Address {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
@@ -362,21 +411,21 @@ export default function ProfilePage() {
                         <Label htmlFor="aadhaarNumber" className="flex items-center">
                             <Fingerprint className="mr-1.5 h-4 w-4 text-primary/80" /> Aadhaar Number
                         </Label>
-                        <Input 
-                            id="aadhaarNumber" 
-                            value={aadhaarNumberInput} 
-                            onChange={(e) => setAadhaarNumberInput(e.target.value.replace(/\D/g, '').slice(0, 12))} 
-                            placeholder="Enter 12-digit Aadhaar" 
+                        <Input
+                            id="aadhaarNumber"
+                            value={aadhaarNumberInput}
+                            onChange={(e) => setAadhaarNumberInput(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                            placeholder="Enter 12-digit Aadhaar"
                             maxLength={12}
                             disabled={isSaving}
                         />
                     </div>
-                    <div className="flex items-center space-x-2 pt-2 md:pt-7"> {/* Adjusted padding for alignment for Aadhaar */}
+                    <div className="flex items-center space-x-2 pt-2 md:pt-7">
                         <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified || false} disabled />
                         <Label htmlFor="aadhaarVerified" className="flex items-center">
-                            {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified ? 
+                            {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified ?
                                 <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/> :
-                                <ShieldAlert className="mr-1.5 h-4 w-4 text-yellow-500"/> 
+                                <ShieldAlert className="mr-1.5 h-4 w-4 text-yellow-500"/>
                             }
                             Aadhaar Verified (Admin)
                         </Label>
@@ -408,6 +457,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-    
