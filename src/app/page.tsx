@@ -23,7 +23,7 @@ export default function LandingPage() {
                     Karigar Kart is your trusted platform to find and book verified artisans and workers for all your home and professional needs.
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                <div className="flex flex-col items-start gap-3 min-[400px]:flex-row min-[400px]:items-center">
                   <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg">
                     <Link href="/signup">Get Started</Link>
                   </Button>
