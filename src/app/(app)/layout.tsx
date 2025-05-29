@@ -12,38 +12,49 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { currentUser, loading, isProfileComplete } = useAuth();
+  const { currentUser, userAppRole, loading, isProfileComplete } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Keep this if used by profile page for query params
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Wait if auth state is still loading
 
     if (!currentUser) {
+      // If not logged in and not on auth pages, redirect to login
       if (pathname !== '/login' && pathname !== '/signup') {
         router.push('/login');
       }
       return;
     }
 
-    // If user is logged in, but profile is not complete,
-    // and they are not already on the profile page, redirect them.
-    // The `new=true` query param is just indicative, actual check is `isProfileComplete`.
-    if (currentUser && !isProfileComplete && pathname !== '/profile') {
-      router.push('/profile?new=true');
+    // User is logged in (currentUser exists)
+    // If role is not selected yet, and not on profile page, redirect to profile page
+    if (!userAppRole && pathname !== '/profile') {
+      router.push('/profile?roleSelection=true'); // Indicate role selection is needed
+      return;
     }
 
-  }, [currentUser, loading, isProfileComplete, router, pathname]);
+    // If role is selected, but profile is not complete,
+    // and not on profile page, redirect to profile page to complete details.
+    if (userAppRole && !isProfileComplete && pathname !== '/profile') {
+      router.push('/profile?new=true'); // Indicate profile completion is needed
+      return;
+    }
 
+  }, [currentUser, userAppRole, loading, isProfileComplete, router, pathname]);
+
+  // Global loading screen
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Initializing...</p>
       </div>
     );
   }
 
+  // If not loading, but no currentUser (should be handled by redirect above, but as a fallback)
   if (!currentUser) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
@@ -53,9 +64,18 @@ export default function AppLayout({
     );
   }
   
-  // If profile is not complete and we are not on profile page yet, show loader.
-  // This handles the brief moment before redirection effect kicks in.
-  if (!isProfileComplete && pathname !== '/profile') {
+  // If role is not selected and not on profile page yet (pre-redirect moment)
+  if (!userAppRole && pathname !== '/profile') {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="ml-4 text-muted-foreground">Redirecting to select role...</p>
+        </div>
+      );
+  }
+  
+  // If profile is not complete and not on profile page yet (pre-redirect moment)
+  if (userAppRole && !isProfileComplete && pathname !== '/profile') {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-16 w-16 animate-spin text-primary" />

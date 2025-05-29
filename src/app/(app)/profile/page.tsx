@@ -8,23 +8,33 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage } from "@/lib/constants";
-import type { User, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2 } from "lucide-react";
+import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
+import { UserCircle, Edit3, Save, UserSquare2, Building, Briefcase, BadgeCheck, ShieldAlert } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { currentUser, userAppRole, markProfileComplete, isProfileComplete: authContextIsProfileComplete, getState, refreshAuthLoading } = useAuth();
+  const { 
+    currentUser, 
+    userAppRole, 
+    markProfileComplete, 
+    isProfileComplete: authContextIsProfileComplete, 
+    selectUserRoleAndInitializeProfile, 
+    loading: authLoading // Renamed to avoid conflict if local loading state is added
+  } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isNewUserFlow = searchParams.get('new') === 'true' && !authContextIsProfileComplete;
+
+  const needsRoleSelection = searchParams.get('roleSelection') === 'true' || !userAppRole;
+  const isNewUserCompletionFlow = searchParams.get('new') === 'true' && !authContextIsProfileComplete;
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -34,6 +44,10 @@ export default function ProfilePage() {
   const [hourlyRateInput, setHourlyRateInput] = useState<number | string>('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://placehold.co/128x128.png');
+  
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
 
   useEffect(() => {
     if (currentUser) {
@@ -41,61 +55,83 @@ export default function ProfilePage() {
       setEmail(currentUser.email || '');
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
 
-      let userProfile;
-      if (userAppRole === 'worker') {
-        userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
-        if (userProfile) {
-          setUsername(userProfile.username || '');
-          setSkillsInput(userProfile.skills?.join(', ') || '');
-          setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
-          setBio(userProfile.bio || '');
-          setAddress((userProfile as any).address || ''); // Assuming worker also has an address field
-          if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
-        } else {
-          // Initialize for a new worker if not found in mock (should be rare if signup adds them)
-          setUsername(currentUser.uid); // Default username
-          setSkillsInput('');
-          setHourlyRateInput('');
-          setBio('');
-          setAddress('');
+      if (userAppRole) { // If role is already determined by AuthContext
+        let userProfile;
+        if (userAppRole === 'worker') {
+          userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
+          if (userProfile) {
+            setUsername(userProfile.username || currentUser.email?.split('@')[0] || '');
+            setSkillsInput(userProfile.skills?.join(', ') || '');
+            setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
+            setBio(userProfile.bio || '');
+            setAddress(userProfile.address || '');
+            if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
+          }
+        } else if (userAppRole === 'customer') {
+          userProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email || c.id === currentUser.uid);
+          if (userProfile) {
+            setUsername(userProfile.username || currentUser.email?.split('@')[0] || '');
+            setAddress(userProfile.address || '');
+            if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
+          }
         }
-      } else if (userAppRole === 'customer') {
-        userProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email || c.id === currentUser.uid);
-        if (userProfile) {
-          setUsername(userProfile.username || '');
-          setAddress(userProfile.address || '');
-          if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
-        } else {
-          // Initialize for a new customer
-          setUsername(currentUser.uid); // Default username
-          setAddress('');
+        // If no profile found in mocks (e.g. new user who selected role but hasn't saved details yet)
+        // fields will remain as initialized or from currentUser.
+        if (!userProfile && (username === '' || username === currentUser.uid)) {
+           setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
         }
+      } else {
+        // User needs to select a role, prefill username if possible
+         setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
       }
     }
   }, [currentUser, userAppRole]);
 
-  const handleSaveChanges = () => {
-    if (!currentUser || !userAppRole) return;
 
-    // Validation for new users or incomplete profiles
-    if (isNewUserFlow || !authContextIsProfileComplete) {
+  const handleConfirmRole = async () => {
+    if (!selectedRole || !currentUser) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a role." });
+      return;
+    }
+    setIsSaving(true);
+    await selectUserRoleAndInitializeProfile(selectedRole);
+    // userAppRole in AuthContext will update, triggering useEffect above to populate fields or keep them empty
+    // The page will re-render, and `shouldShowRoleSelection` will become false.
+    setIsSaving(false);
+    // No explicit redirect here, the page re-renders to show profile fields.
+    // User then fills details and clicks "Save Changes".
+  };
+
+  const handleSaveChanges = async () => {
+    if (!currentUser || !userAppRole) { // Role must be set by now
+      toast({ variant: "destructive", title: "Error", description: "User role not set." });
+      return;
+    }
+    setIsSaving(true);
+
+    // Validation for profile completion
+    if (!authContextIsProfileComplete || isNewUserCompletionFlow || needsRoleSelection) {
       if (userAppRole === 'customer') {
         if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
+          setIsSaving(false);
           return;
         }
       } else if (userAppRole === 'worker') {
         const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
         if (parsedSkills.length === 0) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill (e.g., plumber, electrician)." });
+          setIsSaving(false);
           return;
         }
         if (!bio.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
+          setIsSaving(false);
           return;
         }
         if (!address.trim()) {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
+          setIsSaving(false);
           return;
         }
       }
@@ -107,89 +143,117 @@ export default function ProfilePage() {
         (userAppRole === 'customer' && (MOCK_CUSTOMERS.some(c => c.email !== currentUser.email && c.username.toLowerCase() === usernameLower) || MOCK_WORKERS.some(w => w.username.toLowerCase() === usernameLower)));
 
     if (isUsernameTakenByOther) {
-        toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use by another user. Please choose another." });
+        toast({ variant: "destructive", title: "Username Taken", description: "This username is already in use. Please choose another." });
+        setIsSaving(false);
         return;
     }
 
-
+    // Save to MOCK data
     if (userAppRole === 'worker') {
-      const workerIdx = MOCK_WORKERS.findIndex(w => w.email === currentUser.email || w.id === currentUser.uid);
+      const workerIdx = MOCK_WORKERS.findIndex(w => w.id === currentUser.uid);
       const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
-      
       const workerDataUpdate = {
-        name,
-        username,
-        skills: parsedSkills,
-        hourlyRate: parseFloat(hourlyRateInput as string) || 0,
-        bio,
-        avatarUrl,
-        address: address, // Save address for worker too
+        name, username, skills: parsedSkills,
+        hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
+        bio, avatarUrl, address,
       };
-
       if (workerIdx > -1) {
-        MOCK_WORKERS[workerIdx] = {
-            ...MOCK_WORKERS[workerIdx],
-            ...workerDataUpdate
-        };
-      } else { // Should ideally not happen if signup adds user, but as a fallback
-        MOCK_WORKERS.push({
-          id: currentUser.uid,
-          email: currentUser.email || '',
-          role: 'worker',
-          location: { lat: 0, lng: 0 },
-          isVerified: false, rating: 0, totalJobs: 0,
-          aadhaarVerified: false, // Default
-          ...workerDataUpdate
-        } as Worker);
-      }
-      saveWorkersToLocalStorage(); // Persist changes
+        MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
+      } else { /* Should not happen if selectUserRoleAndInitializeProfile ran */ }
+      saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
-      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.email === currentUser.email || c.id === currentUser.uid);
+      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid);
       const customerDataUpdate = { name, username, address, avatarUrl };
       if (customerIdx > -1) {
-        MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate };
-      } else { // Fallback
-        MOCK_CUSTOMERS.push({
-          id: currentUser.uid,
-          email: currentUser.email || '',
-          role: 'customer',
-          ...customerDataUpdate
-        } as Customer);
-      }
-      saveCustomersToLocalStorage(); // Persist changes
+        MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate, role: 'customer' };
+      } else { /* Should not happen */ }
+      saveCustomersToLocalStorage();
     }
     
     const profileWasInitiallyIncomplete = !authContextIsProfileComplete;
-    markProfileComplete(); // This should synchronously update isProfileComplete in AuthContext
+    markProfileComplete(); // This re-evaluates isProfileComplete in AuthContext
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
     });
+    setIsSaving(false);
 
-    if (profileWasInitiallyIncomplete) {
-      // Check the latest state from the context after markProfileComplete
-      // The AppLayout's useEffect will handle redirection based on the updated context state
-      // but we can also explicitly push if we are sure it's now complete.
-      if (getState().isProfileComplete) {
-          router.push('/dashboard');
-      }
+    // Check current state from AuthContext after markProfileComplete has run
+    const currentAuthState = getState();
+    if (currentAuthState.isProfileComplete && (profileWasInitiallyIncomplete || isNewUserCompletionFlow || needsRoleSelection)) {
+      router.push('/dashboard');
     }
   };
 
-
-  if (!currentUser || !userAppRole) {
-    return <p className="text-center py-10">Loading profile...</p>;
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Loading profile data...</p>
+      </div>
+    );
   }
 
-  return (
-    <div className="space-y-8">
-      {isNewUserFlow && (
+  if (!currentUser) {
+    // This should be handled by AppLayout redirecting to login
+    return <p className="text-center py-10 text-muted-foreground">User not found. Redirecting to login...</p>;
+  }
+
+  // If user is logged in, but role is not yet set in AuthContext, show role selection UI
+  if (!userAppRole) {
+    return (
+      <div className="space-y-8 max-w-2xl mx-auto">
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
           <Info className="h-4 w-4 text-primary" />
-          <AlertTitle className="text-primary font-semibold">Welcome to Karigar Kart!</AlertTitle>
+          <AlertTitle className="text-primary font-semibold">Welcome, {currentUser.displayName || "New User"}!</AlertTitle>
           <AlertDescription>
-            Please complete your profile to get started. Fill in the details below and click "Save Changes".
+            To get started, please tell us who you are. This will help us tailor your experience.
+          </AlertDescription>
+        </Alert>
+        <Card className="shadow-xl">
+          <CardHeader>
+            <CardTitle>Select Your Role</CardTitle>
+            <CardDescription>Are you looking for services or offering them?</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup value={selectedRole || ""} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+              <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary">
+                <RadioGroupItem value="customer" id="role-customer" />
+                <Label htmlFor="role-customer" className="flex-1 cursor-pointer">
+                  <span className="font-semibold block">Customer</span>
+                  <span className="text-sm text-muted-foreground">I'm looking to hire skilled professionals.</span>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary">
+                <RadioGroupItem value="worker" id="role-worker" />
+                <Label htmlFor="role-worker" className="flex-1 cursor-pointer">
+                   <span className="font-semibold block">Artisan / Worker</span>
+                   <span className="text-sm text-muted-foreground">I offer skilled services to customers.</span>
+                </Label>
+              </div>
+            </RadioGroup>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleConfirmRole} disabled={!selectedRole || isSaving} className="w-full">
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Role & Continue
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // If role is selected (userAppRole is not null), render the main profile form
+  return (
+    <div className="space-y-8">
+      {(isNewUserCompletionFlow || (needsRoleSelection && userAppRole && !authContextIsProfileComplete)) && (
+        <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary font-semibold">Complete Your Profile!</AlertTitle>
+          <AlertDescription>
+            Welcome, {userAppRole === 'worker' ? 'Artisan/Worker' : 'Customer'}! Please fill in the details below and click "Save Changes" to get started.
           </AlertDescription>
         </Alert>
       )}
@@ -199,7 +263,7 @@ export default function ProfilePage() {
             My Profile
         </h1>
         <p className="text-muted-foreground">
-          View and manage your account details. You are logged in as a {userAppRole}.
+          View and manage your account details. You are logged in as a <span className="capitalize font-medium">{userAppRole}</span>.
         </p>
       </div>
 
@@ -228,7 +292,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name"/>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" disabled={isSaving}/>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="username_profile">Username</Label>
@@ -237,23 +301,24 @@ export default function ProfilePage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Your unique username"
+                    disabled={isSaving}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email_profile">Email Address</Label>
-                <Input id="email_profile" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." />
+                <Input id="email_profile" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" title="Email is managed by your authentication provider if changed here." disabled={isSaving}/>
               </div>
               
               {userAppRole === 'customer' && (
                  <div className="space-y-1.5">
-                    <Label htmlFor="addressCustomer">Address</Label>
-                    <Input id="addressCustomer" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown"/>
+                    <Label htmlFor="addressCustomer">Address {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                    <Input id="addressCustomer" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown" disabled={isSaving}/>
                 </div>
               )}
                {userAppRole === 'worker' && (
                  <div className="space-y-1.5">
-                    <Label htmlFor="addressWorker">Primary Location / Area (City/Area)</Label>
-                    <Input id="addressWorker" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore (This helps customers find you)" />
+                    <Label htmlFor="addressWorker">Primary Location / Area (City/Area) {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                    <Input id="addressWorker" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore" disabled={isSaving}/>
                 </div>
               )}
             </div>
@@ -263,28 +328,36 @@ export default function ProfilePage() {
             <>
             <Separator />
             <div>
-                <h3 className="text-lg font-semibold mb-3 border-b pb-2">Worker Details</h3>
+                <h3 className="text-lg font-semibold mb-3 border-b pb-2 flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary"/>Worker Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                     <div className="space-y-1.5">
-                        <Label htmlFor="skills">Skills (comma-separated)</Label>
-                        <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="plumber, electrician" />
+                        <Label htmlFor="skills">Skills (comma-separated) {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                        <Input id="skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="plumber, electrician" disabled={isSaving}/>
                          <p className="text-xs text-muted-foreground pt-1">Available: {SERVICE_CATEGORIES.map(s => s.label).join(', ')}</p>
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="hourlyRate">Hourly Rate (₹)</Label>
-                        <Input id="hourlyRate" type="number" value={hourlyRateInput} onChange={(e) => setHourlyRateInput(e.target.value)} placeholder="e.g., 250" />
+                        <Input id="hourlyRate" type="number" value={hourlyRateInput} onChange={(e) => setHourlyRateInput(e.target.value)} placeholder="e.g., 250" disabled={isSaving}/>
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                        <Label htmlFor="bio">Bio</Label>
-                        <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience (e.g., years of experience, specializations)." className="min-h-[100px]"/>
+                        <Label htmlFor="bio">Bio {(!authContextIsProfileComplete || isNewUserCompletionFlow) && <span className="text-destructive">*</span>}</Label>
+                        <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience..." className="min-h-[100px]" disabled={isSaving}/>
                     </div>
                      <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.email === currentUser?.email))?.isVerified || false} disabled />
-                        <Label htmlFor="availability">Profile Verified (Admin)</Label>
+                        <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.isVerified || false} disabled />
+                        <Label htmlFor="availability" className="flex items-center">
+                            <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/>Profile Verified (Admin)
+                        </Label>
                     </div>
                     <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.email === currentUser?.email))?.aadhaarVerified || false} disabled />
-                        <Label htmlFor="aadhaarVerified">Aadhaar Verified (Admin)</Label>
+                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified || false} disabled />
+                        <Label htmlFor="aadhaarVerified" className="flex items-center">
+                            {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified ? 
+                                <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/> :
+                                <ShieldAlert className="mr-1.5 h-4 w-4 text-yellow-500"/> 
+                            }
+                            Aadhaar Verified (Admin)
+                        </Label>
                     </div>
                 </div>
             </div>
@@ -295,16 +368,17 @@ export default function ProfilePage() {
           <div>
             <h3 className="text-lg font-semibold mb-3 border-b pb-2">Account Settings</h3>
             <div className="space-y-2">
-                <Button variant="outline" onClick={() => toast({title: "Feature Coming Soon"})}>Change Password</Button>
-                <Button variant="destructive" className="ml-2" onClick={() => toast({title: "Feature Coming Soon"})}>Delete Account</Button>
+                <Button variant="outline" onClick={() => toast({title: "Feature Coming Soon"})} disabled={isSaving}>Change Password</Button>
+                <Button variant="destructive" className="ml-2" onClick={() => toast({title: "Feature Coming Soon"})} disabled={isSaving}>Delete Account</Button>
             </div>
           </div>
 
         </CardContent>
         <CardFooter className="p-6">
             <div className="flex justify-end w-full">
-                <Button onClick={handleSaveChanges} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow hover:shadow-md">
-                    <Save className="mr-2 h-4 w-4" /> Save Changes
+                <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow hover:shadow-md">
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSaving ? "Saving..." : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
                 </Button>
             </div>
         </CardFooter>
@@ -312,5 +386,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
