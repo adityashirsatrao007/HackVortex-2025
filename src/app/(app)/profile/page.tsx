@@ -8,117 +8,111 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_WORKERS, SERVICE_CATEGORIES } from "@/lib/constants";
+import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES } from "@/lib/constants";
 import type { User, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save } from "lucide-react"; // Added Save icon
+import { UserCircle, Edit3, Save } from "lucide-react"; 
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
-import { useAuth } from '@/hooks/use-auth'; // Import useAuth
-
-// Mock user data - in a real app, this would come from auth/context or backend
-const getMockUser = (userId: string | undefined): User | undefined => {
-  if (!userId) return undefined;
-  if (userId.startsWith('customer')) {
-    return {
-      id: 'customer-1',
-      name: 'Sita Sharma',
-      email: 'sita.sharma@example.com',
-      role: 'customer',
-      avatarUrl: 'https://placehold.co/128x128.png',
-      address: '123 Blossom St, Whitefield, Bangalore',
-    };
-  }
-  // For demo, if not customer, assume it's the first mock worker
-  return MOCK_WORKERS.find(w => w.id === userId) || MOCK_WORKERS[0]; 
-}
-
+import { useToast } from "@/hooks/use-toast"; 
+import { useAuth } from '@/hooks/use-auth'; 
 
 export default function ProfilePage() {
-  const { currentUser } = useAuth(); // Get current user from AuthContext
-  const { toast } = useToast(); // For showing notifications
+  const { currentUser, userAppRole } = useAuth(); 
+  const { toast } = useToast(); 
 
-  // Initialize user state with a default structure or from mockUser
-  // In a real app, you'd fetch this based on currentUser.uid
-  const [user, setUser] = useState<User | null>(null);
+  // State for the user profile data being displayed/edited
+  const [profileData, setProfileData] = useState<Partial<User>>({});
   
-  // Form field states
+  // Form field states, derived from profileData
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
-  const [skillsInput, setSkillsInput] = useState(''); // For worker
-  const [hourlyRateInput, setHourlyRateInput] = useState<number | string>(''); // For worker
-  const [bio, setBio] = useState(''); // For worker
+  const [email, setEmail] = useState(''); // Email is from currentUser, but can be part of form
+  const [address, setAddress] = useState(''); // Customer specific
+  const [skillsInput, setSkillsInput] = useState(''); // Worker specific
+  const [hourlyRateInput, setHourlyRateInput] = useState<number | string>(''); // Worker specific
+  const [bio, setBio] = useState(''); // Worker specific
 
   useEffect(() => {
-    // Simulate fetching user data based on currentUser.uid
-    // For now, using mock data logic. Replace with actual fetch.
     if (currentUser) {
-        // This is a simplified mock fetch. In a real app, you'd query Firestore
-        // or your backend using currentUser.uid.
-        const fetchedUser = getMockUser(currentUser.uid) || { // Fallback to basic structure if no mock
-            id: currentUser.uid,
-            name: currentUser.displayName || '',
-            email: currentUser.email || '',
-            role: 'customer', // Default role, adjust as needed
-        };
-        setUser(fetchedUser);
-        
-        setName(fetchedUser.name || '');
-        setEmail(fetchedUser.email || '');
-        
-        if (fetchedUser.role === 'customer') {
-            setAddress((fetchedUser as Customer).address || '');
-        } else if (fetchedUser.role === 'worker') {
-            const workerUser = fetchedUser as Worker;
-            setSkillsInput(workerUser.skills?.join(', ') || '');
-            setHourlyRateInput(workerUser.hourlyRate?.toString() || '');
-            setBio(workerUser.bio || '');
-            setAddress(workerUser.location ? `${workerUser.location.lat}, ${workerUser.location.lng}` : 'Location not set'); // Simplified address for worker
-        }
+      let baseProfile: Partial<User> = {
+        id: currentUser.uid,
+        name: currentUser.displayName || '',
+        email: currentUser.email || '',
+        role: userAppRole || 'customer', // Default to customer if role not yet set
+      };
+
+      if (userAppRole === 'worker') {
+        // For a real app, fetch worker details from Firestore using currentUser.uid
+        // For mock: find a worker, e.g., by email or use the first one
+        const mockWorker = MOCK_WORKERS.find(w => w.email === currentUser.email) || MOCK_WORKERS[0];
+        baseProfile = { ...baseProfile, ...mockWorker, role: 'worker' };
+        setName(mockWorker.name);
+        setEmail(mockWorker.email);
+        setSkillsInput(mockWorker.skills?.join(', ') || '');
+        setHourlyRateInput(mockWorker.hourlyRate?.toString() || '');
+        setBio(mockWorker.bio || '');
+        setAddress(mockWorker.location ? `${mockWorker.location.lat}, ${mockWorker.location.lng}` : 'Location not set');
+      } else { // Customer
+        // For a real app, fetch customer details from Firestore
+        // For mock: find a customer, e.g., by email or use the first one
+        const mockCustomer = MOCK_CUSTOMERS.find(c => c.email === currentUser.email) || MOCK_CUSTOMERS[0];
+        baseProfile = { ...baseProfile, ...mockCustomer, role: 'customer' };
+        setName(mockCustomer.name);
+        setEmail(mockCustomer.email);
+        setAddress((mockCustomer as Customer).address || '');
+      }
+      setProfileData(baseProfile);
     }
-  }, [currentUser]);
+  }, [currentUser, userAppRole]);
+
+  // Update individual form states when profileData changes (e.g. after initial load)
+  // This handles the case where currentUser loads after initial render
+ useEffect(() => {
+    setName(profileData.name || currentUser?.displayName || '');
+    setEmail(profileData.email || currentUser?.email || '');
+    if (profileData.role === 'customer') {
+        setAddress((profileData as Customer).address || '');
+    } else if (profileData.role === 'worker') {
+        const workerData = profileData as Worker;
+        setSkillsInput(workerData.skills?.join(', ') || '');
+        setHourlyRateInput(workerData.hourlyRate?.toString() || '');
+        setBio(workerData.bio || '');
+        // For simplicity, worker address field shows lat/lng or a placeholder
+        setAddress(workerData.location ? `Worker Location (Lat: ${workerData.location.lat}, Lng: ${workerData.location.lng})` : 'Location not set');
+    }
+}, [profileData, currentUser]);
 
 
   const handleSaveChanges = () => {
-    if (!user) return;
+    if (!currentUser || !profileData.role) return;
 
-    // Here you would typically send the updated data to your backend
-    // For email changes, Firebase Auth requires specific handling (e.g., updateEmail, re-authentication)
-    console.log("Saving changes:", {
+    // Construct the data to "save"
+    const updatedDetails: Partial<User> = {
       name,
-      email,
-      address,
-      ...(user.role === 'worker' && {
-        skills: skillsInput.split(',').map(s => s.trim() as ServiceCategory),
-        hourlyRate: parseFloat(hourlyRateInput as string),
-        bio,
-      })
-    });
+      email, // Note: Firebase email updates need special handling (re-auth, verification)
+    };
 
-    // Optimistically update local user state (or re-fetch)
-    setUser(prevUser => {
-        if (!prevUser) return null;
-        const updatedUser = { ...prevUser, name, email };
-        if (prevUser.role === 'customer') {
-            (updatedUser as Customer).address = address;
-        } else if (prevUser.role === 'worker') {
-            (updatedUser as Worker).skills = skillsInput.split(',').map(s => s.trim() as ServiceCategory);
-            (updatedUser as Worker).hourlyRate = parseFloat(hourlyRateInput as string);
-            (updatedUser as Worker).bio = bio;
-            // Note: worker location update is more complex than just address string
-        }
-        return updatedUser;
-    });
+    if (profileData.role === 'customer') {
+      (updatedDetails as Partial<Customer>).address = address;
+    } else if (profileData.role === 'worker') {
+      (updatedDetails as Partial<Worker>).skills = skillsInput.split(',').map(s => s.trim() as ServiceCategory);
+      (updatedDetails as Partial<Worker>).hourlyRate = parseFloat(hourlyRateInput as string);
+      (updatedDetails as Partial<Worker>).bio = bio;
+      // Saving worker location from a simple address string would need geocoding in a real app
+    }
+    
+    console.log("Saving changes (mock):", { uid: currentUser.uid, role: profileData.role, ...updatedDetails });
+
+    // Optimistically update local profileData state
+    setProfileData(prev => ({ ...prev, ...updatedDetails }));
 
     toast({
-      title: "Profile Updated",
-      description: "Your changes have been saved.",
+      title: "Profile Updated (Mock)",
+      description: "Your changes have been locally updated. Backend integration needed for persistence.",
     });
   };
 
-  if (!user) {
-    return <p>Loading profile...</p>; // Or a proper loader component
+  if (!currentUser || !profileData.role) {
+    return <p className="text-center py-10">Loading profile...</p>; 
   }
 
   return (
@@ -129,19 +123,19 @@ export default function ProfilePage() {
             My Profile
         </h1>
         <p className="text-muted-foreground">
-          View and manage your account details.
+          View and manage your account details. You are logged in as a {profileData.role}.
         </p>
       </div>
 
       <Card className="shadow-lg">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center gap-4">
           <Avatar className="h-24 w-24 border-2 border-primary">
-            <AvatarImage src={user.avatarUrl || 'https://placehold.co/128x128.png'} alt={name} data-ai-hint="person avatar" />
+            <AvatarImage src={profileData.avatarUrl || 'https://placehold.co/128x128.png'} alt={name} data-ai-hint="person avatar" />
             <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <CardTitle className="text-2xl">{name}</CardTitle>
-            <CardDescription className="capitalize">{user.role}</CardDescription>
+            <CardDescription className="capitalize">{profileData.role}</CardDescription>
             <Button variant="outline" size="sm" className="mt-2">
               <Edit3 className="mr-2 h-3 w-3" /> Edit Profile Picture
             </Button>
@@ -159,22 +153,23 @@ export default function ProfilePage() {
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
-              {user.role === 'customer' && (
+              
+              {profileData.role === 'customer' && (
                  <div className="space-y-1 md:col-span-2">
                     <Label htmlFor="address">Address</Label>
-                    <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                    <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main St, Anytown"/>
                 </div>
               )}
-               {user.role === 'worker' && ( // Worker location/address might be handled differently (e.g. GeoLocation)
+               {profileData.role === 'worker' && ( 
                  <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="address">Primary Location (City/Area)</Label>
-                    <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore" />
+                    <Label htmlFor="address">Primary Location (City/Area or Lat,Lng)</Label>
+                    <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., Whitefield, Bangalore or 12.97,77.59" />
                 </div>
               )}
             </div>
           </div>
 
-          {user.role === 'worker' && (
+          {profileData.role === 'worker' && (
             <>
             <Separator />
             <div>
@@ -193,11 +188,11 @@ export default function ProfilePage() {
                         <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience." className="min-h-[80px]"/>
                     </div>
                      <div className="flex items-center space-x-2">
-                        <Switch id="availability" checked={(user as Worker).isVerified} disabled />
+                        <Switch id="availability" checked={(profileData as Worker).isVerified} disabled />
                         <Label htmlFor="availability">Profile Verified (Admin)</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="aadhaarVerified" checked={(user as Worker).aadhaarVerified} disabled />
+                        <Switch id="aadhaarVerified" checked={(profileData as Worker).aadhaarVerified} disabled />
                         <Label htmlFor="aadhaarVerified">Aadhaar Verified (Admin)</Label>
                     </div>
                 </div>

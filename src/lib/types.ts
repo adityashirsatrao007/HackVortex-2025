@@ -25,12 +25,12 @@ export interface Worker extends BaseUser {
   skills: ServiceCategory[];
   location: GeoLocation;
   isVerified: boolean;
-  aadhaarVerified?: boolean; // Added from prompt
-  selfieWithGpsUrl?: string; // Added from prompt
+  aadhaarVerified?: boolean;
+  selfieWithGpsUrl?: string;
   rating: number; // Average rating
   bio?: string;
   hourlyRate?: number;
-  availability?: { day: string, start: string, end: string }[]; // Example: [{ day: 'Mon', start: '09:00', end: '17:00' }]
+  availability?: { day: string, start: string, end: string }[];
   totalJobs?: number;
 }
 
@@ -48,15 +48,15 @@ export interface Review {
 export interface Booking {
   id: string;
   customerId: string;
-  customerName: string; // denormalized for easy display
+  customerName: string;
   workerId: string;
-  workerName: string; // denormalized
+  workerName: string;
   serviceCategory: ServiceCategory;
   dateTime: string; // ISO string
   status: BookingStatus;
-  locationPreview: string; // e.g., "123 Main St, Anytown"
+  locationPreview: string;
   notes?: string;
-  review?: Review; // Review associated with this booking after completion
+  review?: Review;
 }
 
 export type User = Customer | Worker;

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, Briefcase, ListChecks, UserCircle, Handshake, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { Menu, Briefcase, ListChecks, UserCircle, Handshake, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -30,7 +30,7 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
           'text-sm font-medium transition-colors',
           isDesktop 
             ? 'hover:text-primary hover:bg-accent/10 px-3 py-2 rounded-md' 
-            : 'hover:text-primary py-3 px-3 rounded-md hover:bg-accent/10 flex items-center text-base gap-2', // Consistent styling for mobile
+            : 'hover:text-primary py-3 px-3 rounded-md hover:bg-accent/10 flex items-center text-base gap-2',
           isActive 
             ? (isDesktop ? 'text-primary bg-accent/15 font-semibold' : 'text-primary font-semibold bg-accent/15') 
             : 'text-muted-foreground',
@@ -45,7 +45,7 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
 
 export default function Header() {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
-  const { currentUser, logout, loading } = useAuth();
+  const { currentUser, userAppRole, logout, loading } = useAuth(); // Added userAppRole
   const router = useRouter();
   const pathname = usePathname();
 
@@ -54,20 +54,29 @@ export default function Header() {
   const handleLogout = async () => {
     closeSheet();
     await logout();
-    // router.push('/login'); // Auth context now handles redirect
   };
 
-  const navItems = currentUser
-    ? [
-        { href: '/dashboard', label: 'Dashboard', icon: <Briefcase className="h-4 w-4 mr-2 md:mr-0" /> },
-        { href: '/bookings', label: 'Bookings', icon: <ListChecks className="h-4 w-4 mr-2 md:mr-0" /> },
+  let navItems = [];
+  if (currentUser) {
+    if (userAppRole === 'worker') {
+      navItems = [
+        { href: '/dashboard', label: 'My Jobs', icon: <LayoutDashboard className="h-4 w-4 mr-2 md:mr-0" /> },
+        { href: '/bookings', label: 'Schedule', icon: <CalendarClock className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
-      ]
-    : [];
+      ];
+    } else { // Customer or default
+      navItems = [
+        { href: '/dashboard', label: 'Find Workers', icon: <Briefcase className="h-4 w-4 mr-2 md:mr-0" /> },
+        { href: '/bookings', label: 'My Bookings', icon: <ListChecks className="h-4 w-4 mr-2 md:mr-0" /> },
+        { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
+      ];
+    }
+  }
+
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
-  if (loading && !isAuthPage) { // Show minimal header or loader on protected pages during auth loading
+  if (loading && !isAuthPage) { 
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
@@ -75,13 +84,11 @@ export default function Header() {
             <Handshake className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
-          {/* Optionally, a small loading indicator here */}
         </div>
       </header>
     );
   }
   
-  // If on auth page, show a simplified header
   if (isAuthPage && !currentUser) {
      return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -104,7 +111,6 @@ export default function Header() {
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
 
-        {/* Desktop Navigation */}
         {currentUser && (
           <nav className="hidden items-center gap-1 md:flex">
             {navItems.map((item) => (
@@ -133,7 +139,6 @@ export default function Header() {
             </Button>
            )}
 
-          {/* Mobile Navigation Trigger */}
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">

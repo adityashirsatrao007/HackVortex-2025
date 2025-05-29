@@ -18,8 +18,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRole } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth"; // Import useAuth
-import { Handshake, UserPlus, Loader2 } from "lucide-react"; // Added Loader2
+import { useAuth } from "@/hooks/use-auth"; 
+import { Handshake, UserPlus, Loader2 } from "lucide-react"; 
 
 const signupFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -35,7 +35,7 @@ const signupFormSchema = z.object({
 type SignupFormValues = z.infer<typeof signupFormSchema>;
 
 export function SignupForm() {
-  const { signup, loading } = useAuth(); // Get signup function and loading state
+  const { signup, loading } = useAuth(); 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
     defaultValues: {
@@ -48,9 +48,7 @@ export function SignupForm() {
   });
 
   async function onSubmit(data: SignupFormValues) {
-    await signup(data.email, data.password, data.name);
-    // Role handling (e.g. saving to Firestore) would be an additional step here or in the auth context
-    console.log("Selected role:", data.role); 
+    await signup(data.email, data.password, data.name, data.role); // Pass role to signup
   }
 
   return (

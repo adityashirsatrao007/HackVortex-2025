@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,9 +6,14 @@ import { WorkerMap } from '@/components/map/worker-map';
 import { MapFilter } from '@/components/map/map-filter';
 import type { Worker, ServiceCategory } from '@/lib/types';
 import { MOCK_WORKERS } from '@/lib/constants';
-import { WorkerCard } from '@/components/worker/worker-card'; // Will create this next
+import { WorkerCard } from '@/components/worker/worker-card';
+import { useAuth } from '@/hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info, ShieldCheck } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { userAppRole, currentUser } = useAuth();
   const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>(MOCK_WORKERS);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
@@ -24,14 +30,63 @@ export default function DashboardPage() {
       );
     }
     setFilteredWorkers(workers);
-    setSelectedWorkerId(undefined); // Reset selection on filter change
+    setSelectedWorkerId(undefined); 
   };
 
   const handleWorkerSelectOnMap = (workerId: string) => {
     setSelectedWorkerId(workerId);
-    // Optionally, scroll to worker card if list view is also present
   };
 
+  if (userAppRole === 'worker') {
+    // Worker Dashboard View
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Worker Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage your jobs, schedule, and profile. Welcome, {currentUser?.displayName || 'Worker'}!
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Coming Soon!</AlertTitle>
+              <AlertDescription>
+                Your personalized worker dashboard with job management, earnings, and more is under construction.
+                For now, please use the "Schedule" and "Profile" sections.
+              </AlertDescription>
+            </Alert>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-secondary/30">
+                    <CardHeader>
+                        <CardTitle className="text-lg">New Job Requests</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold">0</p>
+                        <p className="text-xs text-muted-foreground">No new requests currently.</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-secondary/30">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Upcoming Confirmed Jobs</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold">0</p>
+                         <p className="text-xs text-muted-foreground">Check your schedule for upcoming jobs.</p>
+                    </CardContent>
+                </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Customer Dashboard View (default)
   return (
     <div className="space-y-8">
       <div>

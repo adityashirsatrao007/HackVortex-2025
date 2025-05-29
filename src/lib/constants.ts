@@ -1,4 +1,4 @@
-import type { ServiceCategory, Worker, Booking, Review } from './types';
+import type { ServiceCategory, Worker, Booking, Review, Customer, UserRole } from './types';
 
 export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
   { value: 'plumber', label: 'Plumber' },
@@ -13,7 +13,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-1',
     name: 'Rajesh Kumar',
-    email: 'rajesh.k@example.com',
+    email: 'rajesh.worker@example.com', // Unique email for role detection
     role: 'worker',
     skills: ['plumber', 'electrician'],
     location: { lat: 12.9716, lng: 77.5946 }, // Bangalore
@@ -29,7 +29,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-2',
     name: 'Priya Singh',
-    email: 'priya.s@example.com',
+    email: 'priya.worker@example.com', // Unique email
     role: 'worker',
     skills: ['carpenter'],
     location: { lat: 12.9352, lng: 77.6245 }, // Koramangala
@@ -44,7 +44,7 @@ export const MOCK_WORKERS: Worker[] = [
   {
     id: 'worker-3',
     name: 'Amit Patel',
-    email: 'amit.p@example.com',
+    email: 'amit.worker@example.com', // Unique email
     role: 'worker',
     skills: ['mason', 'painter'],
     location: { lat: 13.0000, lng: 77.6500 }, // Indiranagar
@@ -58,6 +58,34 @@ export const MOCK_WORKERS: Worker[] = [
     totalJobs: 60,
   },
 ];
+
+export const MOCK_CUSTOMERS: Customer[] = [
+  {
+    id: 'customer-1',
+    name: 'Sita Sharma',
+    email: 'sita.customer@example.com', // Unique email for role detection
+    role: 'customer',
+    avatarUrl: 'https://placehold.co/128x128.png',
+    address: '123 Blossom St, Whitefield, Bangalore',
+  },
+  {
+    id: 'customer-2',
+    name: 'Vikram Reddy',
+    email: 'vikram.customer@example.com', // Unique email
+    role: 'customer',
+    avatarUrl: 'https://placehold.co/128x128.png',
+    address: '456 Oak Rd, Koramangala, Bangalore',
+  },
+   {
+    id: 'customer-test', // Generic test customer for fallback
+    name: 'Test Customer User',
+    email: 'customer@example.com',
+    role: 'customer',
+    avatarUrl: 'https://placehold.co/128x128.png',
+    address: '789 Test Lane, Test City',
+  },
+];
+
 
 export const MOCK_REVIEWS: Review[] = [
   {
@@ -81,9 +109,9 @@ export const MOCK_REVIEWS: Review[] = [
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: 'customer-1',
+    customerId: 'customer-1', // Sita Sharma
     customerName: 'Sita Sharma',
-    workerId: 'worker-1',
+    workerId: 'worker-1', // Rajesh Kumar
     workerName: 'Rajesh Kumar',
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
@@ -94,9 +122,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: 'customer-2',
+    customerId: 'customer-2', // Vikram Reddy
     customerName: 'Vikram Reddy',
-    workerId: 'worker-2',
+    workerId: 'worker-2', // Priya Singh
     workerName: 'Priya Singh',
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
@@ -107,9 +135,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: 'customer-1',
+    customerId: 'customer-1', // Sita Sharma
     customerName: 'Sita Sharma',
-    workerId: 'worker-3',
+    workerId: 'worker-3', // Amit Patel
     workerName: 'Amit Patel',
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // In 2 days
@@ -119,9 +147,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: 'customer-3',
-    customerName: 'Ananya Desai',
-    workerId: 'worker-1',
+    customerId: 'customer-test', // Ananya Desai (using test customer)
+    customerName: 'Test Customer User',
+    workerId: 'worker-1', // Rajesh Kumar
     workerName: 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // In 5 days
@@ -129,4 +157,16 @@ export const MOCK_BOOKINGS: Booking[] = [
     locationPreview: '321 Palm Ave, Jayanagar',
     notes: 'Fix wiring for new AC unit.',
   },
+  { // Booking for worker-1 to see in their list
+    id: 'booking-5',
+    customerId: 'customer-2',
+    customerName: 'Vikram Reddy',
+    workerId: 'worker-1',
+    workerName: 'Rajesh Kumar',
+    serviceCategory: 'electrician',
+    dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // In 3 days
+    status: 'accepted',
+    locationPreview: 'Vikram Reddy House',
+    notes: 'Install new ceiling fan.',
+  }
 ];
