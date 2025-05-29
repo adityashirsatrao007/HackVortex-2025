@@ -123,6 +123,7 @@ export default function ProfilePage() {
           role: 'worker',
           location: { lat: 0, lng: 0 }, // Default GeoLocation for new worker
           isVerified: false, rating: 0, totalJobs: 0,
+          aadhaarVerified: false, // Default for new worker
           ...workerData,
           address: address, // String address
         } as Worker & { address?: string }); 

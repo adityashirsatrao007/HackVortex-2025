@@ -1,3 +1,4 @@
+
 import type { ServiceCategory, Worker, Booking, Review, Customer, UserRole } from './types';
 
 export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [

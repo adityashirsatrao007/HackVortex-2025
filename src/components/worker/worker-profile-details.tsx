@@ -70,7 +70,7 @@ export function WorkerProfileDetails({ worker }: WorkerProfileDetailsProps) {
                 </Badge>
               )}
                {worker.aadhaarVerified && (
-                <Badge variant="outline" className="text-green-700 border-green-500 bg-green-500/10">
+                <Badge variant="outline" className="text-green-700 border-green-500 bg-green-500/10 shadow-sm">
                   Aadhaar Verified
                 </Badge>
               )}
