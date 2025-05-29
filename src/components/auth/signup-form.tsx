@@ -237,9 +237,9 @@ export function SignupForm() {
         </Form>
 
         <div className="my-6 flex items-center">
-          <Separator className="flex-grow" />
-          <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH</span>
-          <Separator className="flex-grow" />
+          <Separator className="flex-1" />
+          <span className="mx-4 text-xs text-muted-foreground shrink-0">OR SIGN UP WITH</span>
+          <Separator className="flex-1" />
         </div>
 
         <Button 
