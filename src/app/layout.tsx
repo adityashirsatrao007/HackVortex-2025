@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'HandyConnect',
-  description: 'Find and book verified daily wage workers.',
+  title: 'Karigar Kart',
+  description: 'Find and book verified artisans and workers.',
 };
 
 export default function RootLayout({

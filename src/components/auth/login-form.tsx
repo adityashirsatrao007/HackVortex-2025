@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,7 +53,7 @@ export function LoginForm() {
             <Handshake className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
-        <CardDescription>Log in to your HandyConnect account.</CardDescription>
+        <CardDescription>Log in to your Karigar Kart account.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

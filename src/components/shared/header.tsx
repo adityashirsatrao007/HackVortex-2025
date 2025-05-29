@@ -1,6 +1,7 @@
+
 'use client';
 
-import * as React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,7 @@ export default function Header() {
       <div className="container flex h-16 items-center justify-between">
         <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
           <Handshake className="h-7 w-7 text-primary" />
-          <span className="text-xl font-bold text-foreground">HandyConnect</span>
+          <span className="text-xl font-bold text-foreground">Karigar Kart</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -94,7 +95,7 @@ export default function Header() {
                 <div className="flex flex-col gap-4 p-4">
                   <Link href={isAuthenticated ? "/dashboard" : "/"} className="mb-4 flex items-center gap-2" onClick={closeSheet} prefetch={false}>
                      <Handshake className="h-7 w-7 text-primary" />
-                    <span className="text-lg font-semibold">HandyConnect</span>
+                    <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
                   {navItems.map((item) => (
                     <NavLink key={item.href} href={item.href} className="flex items-center gap-2 text-base" onClick={closeSheet}>

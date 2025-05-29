@@ -13,7 +13,7 @@ export default function AppLayout({
       </main>
       <footer className="border-t">
         <div className="container py-4 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} HandyConnect. All rights reserved.
+          © {new Date().getFullYear()} Karigar Kart. All rights reserved.
         </div>
       </footer>
     </div>

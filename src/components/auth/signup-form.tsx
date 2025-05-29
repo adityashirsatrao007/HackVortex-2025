@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,7 +65,7 @@ export function SignupForm() {
              <Handshake className="h-12 w-12 text-primary" />
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
-        <CardDescription>Join HandyConnect today to find or offer services.</CardDescription>
+        <CardDescription>Join Karigar Kart today to find or offer services.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -146,7 +147,7 @@ export function SignupForm() {
                           <RadioGroupItem value="worker" />
                         </FormControl>
                         <FormLabel className="font-normal">
-                          Worker (Offering services)
+                          Artisan/Worker (Offering services)
                         </FormLabel>
                       </FormItem>
                     </RadioGroup>

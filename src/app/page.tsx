@@ -16,10 +16,10 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
-                    Connect with Skilled Workers, Instantly.
+                    Connect with Skilled Artisans, Instantly.
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    HandyConnect is your trusted platform to find and book verified daily wage workers for all your home and professional needs.
+                    Karigar Kart is your trusted platform to find and book verified artisans and workers for all your home and professional needs.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -27,14 +27,14 @@ export default function LandingPage() {
                     <Link href="/signup">Get Started</Link>
                   </Button>
                   <Button variant="outline" size="lg" asChild>
-                    <Link href="/dashboard">Find Workers</Link>
+                    <Link href="/dashboard">Find Artisans</Link>
                   </Button>
                 </div>
               </div>
               <Image
                 src="https://placehold.co/600x400.png"
                 alt="Hero"
-                data-ai-hint="workers tools"
+                data-ai-hint="artisans tools"
                 width={600}
                 height={400}
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square shadow-lg"
@@ -49,7 +49,7 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm text-secondary-foreground">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose HandyConnect?</h2>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose Karigar Kart?</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   We provide a seamless, secure, and reliable way to connect with local professionals.
                 </p>
@@ -59,10 +59,10 @@ export default function LandingPage() {
               <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-8 w-8 text-primary" />
-                  <h3 className="text-lg font-bold">Verified Workers</h3>
+                  <h3 className="text-lg font-bold">Verified Artisans</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  All workers are verified for your safety and peace of mind. (Aadhaar, Selfie + GPS).
+                  All artisans are verified for your safety and peace of mind. (Aadhaar, Selfie + GPS).
                 </p>
               </div>
               <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow">
@@ -102,7 +102,7 @@ export default function LandingPage() {
               <div className="flex flex-col items-center gap-2">
                 <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold">1</div>
                 <h3 className="font-semibold mt-2">Search & Discover</h3>
-                <p className="text-sm text-muted-foreground">Find workers by skill and location.</p>
+                <p className="text-sm text-muted-foreground">Find artisans by skill and location.</p>
               </div>
               <div className="flex flex-col items-center gap-2">
                 <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold">2</div>
@@ -119,7 +119,7 @@ export default function LandingPage() {
         </section>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} HandyConnect. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Karigar Kart. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link href="#" className="text-xs hover:underline underline-offset-4 text-muted-foreground" prefetch={false}>
             Terms of Service
