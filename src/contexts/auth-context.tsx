@@ -28,7 +28,7 @@ interface AuthContextType extends AuthState {
   signup: (email: string, pass: string, name: string, username: string) => Promise<UserCredential | void>;
   logout: () => Promise<void>;
   markProfileComplete: () => void;
-  selectUserRoleAndInitializeProfile: (role: UserRole, username: string) => Promise<void>;
+  selectUserRoleAndInitializeProfile: (role: UserRole, usernameFromProfileInput: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,46 +43,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setLoading(true);
-      if (user) {
-        setCurrentUser(user);
-        const persistedRole = loadUserRoleFromLocalStorage(user.uid);
-        // If role is already set (e.g. by signup/login), and currentUser matches, prioritize it.
-        // Else, detect or use persisted. This helps avoid race conditions where onAuthStateChanged overwrites
-        // a role just set by signup.
-        let finalRole: UserRole | null = null;
-        if (currentUser && currentUser.uid === user.uid && userAppRole) {
-            finalRole = userAppRole;
-        } else {
-            finalRole = persistedRole || detectUserRoleFromMocks(user.email);
-        }
-        
-        setUserAppRole(finalRole);
-        setIsProfileComplete(checkProfileCompletion(user, finalRole));
+      setLoading(true); // Indicate that auth state processing has started
+      try {
+        if (user) {
+          setCurrentUser(user);
+          const persistedRole = loadUserRoleFromLocalStorage(user.uid);
+          
+          let finalRole: UserRole | null = null;
+          // Prioritize role if signup/login just happened and set it in context
+          // This check helps if onAuthStateChanged fires *after* signup/login have already set the context's userAppRole
+          // but before this callback fully processes the `user` object from Firebase.
+          if (currentUser?.uid === user.uid && userAppRole) {
+              finalRole = userAppRole;
+          } else {
+              finalRole = persistedRole || detectUserRoleFromMocks(user.email);
+          }
+          
+          setUserAppRole(finalRole);
+          setIsProfileComplete(checkProfileCompletion(user, finalRole));
 
-      } else {
+        } else {
+          setCurrentUser(null);
+          setUserAppRole(null);
+          setIsProfileComplete(false);
+        }
+      } catch (e) {
+        console.error("Error during onAuthStateChanged processing:", e);
+        // Ensure states are cleared if there's an error processing user
         setCurrentUser(null);
         setUserAppRole(null);
         setIsProfileComplete(false);
+      } finally {
+        setLoading(false); // Crucially, set loading to false after all processing
       }
-      setLoading(false);
     });
     return () => unsubscribe();
-  }, []); // Intentionally empty or minimal dependencies for onAuthStateChanged
+  }, []); // KEEP THIS EMPTY: onAuthStateChanged listener should be set up once.
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting states (currentUser, role, profileComplete) and then setLoading(false).
-      // We show the toast here for immediate feedback.
+      // onAuthStateChanged will fire and handle setting currentUser, role, isProfileComplete, and setLoading(false)
       toast({ title: "Logged In", description: "Welcome back!" });
-      // Redirect logic is handled by AppLayout based on context state changes.
       return userCredential;
     } catch (error: any) {
       console.error("Login error:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
-      setLoading(false); // Explicitly set loading to false on error.
+      setLoading(false); // Ensure loading is false if login itself fails
     }
   };
 
@@ -104,15 +112,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (firebaseUser) {
         await updateProfile(firebaseUser, { displayName: name });
-        // Role will be null initially, set by selectUserRoleAndInitializeProfile
+        
+        // After Firebase user is created, update context.
+        // onAuthStateChanged will also fire, but this ensures immediate UI consistency if needed.
         setCurrentUser(firebaseUser); 
         setUserAppRole(null); // Role selection happens on profile page
         setIsProfileComplete(false); // Profile is incomplete until role & details are filled
-        // No need to add to MOCK_ arrays here; selectUserRoleAndInitializeProfile will handle it.
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}! Please select your role and complete your profile.` });
-      router.push('/profile?roleSelection=true'); 
-      // setLoading(false) will be set by onAuthStateChanged after user is set
+      router.push('/profile?roleSelection=true');
+      // setLoading(false) will be handled by onAuthStateChanged
       return userCredential;
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -121,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const selectUserRoleAndInitializeProfile = async (role: UserRole, usernameFromProfile: string) => {
+  const selectUserRoleAndInitializeProfile = async (role: UserRole, usernameFromProfileInput: string) => {
     if (!currentUser) {
       toast({ variant: "destructive", title: "Error", description: "No current user found." });
       return;
@@ -130,12 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserAppRole(role); 
     saveUserRoleToLocalStorage(currentUser.uid, role);
 
-    const finalUsername = usernameFromProfile || currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`;
+    const finalUsername = usernameFromProfileInput || currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`;
 
     const baseUserData = {
       id: currentUser.uid,
       name: currentUser.displayName || "New User",
-      username: finalUsername,
+      username: finalUsername, // Use the username passed from profile page
       email: currentUser.email || "",
       role: role,
       avatarUrl: currentUser.photoURL || undefined,
@@ -164,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hourlyRate: 0,
           address: '',
           aadhaarVerified: false,
+          aadhaarNumber: '',
         } as WorkerType);
       } else {
         MOCK_WORKERS[existingIdx] = { ...MOCK_WORKERS[existingIdx], ...baseUserData, username: finalUsername, role: 'worker' };
@@ -172,17 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveWorkersToLocalStorage();
     }
     
-    // Profile is not yet complete, user still needs to fill details like address/skills
     setIsProfileComplete(false); 
     toast({ title: "Role Selected", description: `You are now set as a ${role}. Please complete your profile details.` });
-    // No automatic redirect here, user stays on profile page to fill details
   };
 
   const logout = async () => {
     setLoading(true);
     try {
       await firebaseSignOut(auth);
-      // onAuthStateChanged will handle resetting states and then setLoading(false)
+      // onAuthStateChanged will handle resetting states (currentUser, role, etc.) and then setting setLoading(false)
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error: any) {
@@ -193,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const markProfileComplete = useCallback(() => {
-    if (auth.currentUser && userAppRole) { // Check if userAppRole is also set
+    if (auth.currentUser && userAppRole) { 
         setIsProfileComplete(checkProfileCompletion(auth.currentUser, userAppRole));
     } else {
         setIsProfileComplete(false);
