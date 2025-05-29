@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth"; // Import useAuth
-import { ShoppingCart, LogIn, Loader2 } from "lucide-react"; // Added Loader2, changed Handshake to ShoppingCart
+import { useAuth } from "@/hooks/use-auth"; 
+import { LogIn, Loader2 } from "lucide-react"; 
+import { KarigarKartLogoIcon } from "@/components/icons/karigar-kart-logo-icon"; // Updated import
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -27,7 +28,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 export function LoginForm() {
-  const { login, loading } = useAuth(); // Get login function and loading state
+  const { login, loading } = useAuth(); 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -44,7 +45,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-            <ShoppingCart className="h-12 w-12 text-primary" />
+            <KarigarKartLogoIcon className="h-12 w-12 text-primary" /> {/* Updated icon */}
         </div>
         <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
         <CardDescription>Log in to your Karigar Kart account.</CardDescription>

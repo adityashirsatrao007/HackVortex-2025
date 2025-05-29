@@ -19,7 +19,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth"; 
-import { ShoppingCart, UserPlus, Loader2 } from "lucide-react"; // Changed Handshake to ShoppingCart
+import { UserPlus, Loader2 } from "lucide-react"; 
+import { KarigarKartLogoIcon } from "@/components/icons/karigar-kart-logo-icon"; // Updated import
 
 const signupFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -48,14 +49,14 @@ export function SignupForm() {
   });
 
   async function onSubmit(data: SignupFormValues) {
-    await signup(data.email, data.password, data.name, data.role); // Pass role to signup
+    await signup(data.email, data.password, data.name, data.role); 
   }
 
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-             <ShoppingCart className="h-12 w-12 text-primary" />
+             <KarigarKartLogoIcon className="h-12 w-12 text-primary" /> {/* Updated icon */}
         </div>
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
         <CardDescription>Join Karigar Kart today to find or offer services.</CardDescription>

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, Briefcase, ListChecks, UserCircle, ShoppingCart, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell, Trash2 } from 'lucide-react';
+import { Menu, Briefcase, ListChecks, UserCircle, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell } from 'lucide-react';
+import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon'; // Updated import
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useNotification } from '@/contexts/notification-context';
@@ -85,21 +86,21 @@ export default function Header() {
   };
 
   let navItems = [];
-  if (currentUser && isProfileComplete) { // Only show full nav if profile is complete
+  if (currentUser && isProfileComplete) { 
     if (userAppRole === 'worker') {
       navItems = [
         { href: '/dashboard', label: 'My Jobs', icon: <LayoutDashboard className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/bookings', label: 'Schedule', icon: <CalendarClock className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ];
-    } else { // Customer or default
+    } else { 
       navItems = [
         { href: '/dashboard', label: 'Find Workers', icon: <Briefcase className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/bookings', label: 'My Bookings', icon: <ListChecks className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ];
     }
-  } else if (currentUser && !isProfileComplete) { // If profile is not complete, only show Profile link
+  } else if (currentUser && !isProfileComplete) { 
      navItems = [
         { href: '/profile', label: 'Complete Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
      ];
@@ -115,7 +116,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
            <Link href={currentUser ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
-            <ShoppingCart className="h-8 w-8 text-primary" />
+            <KarigarKartLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
         </div>
@@ -128,7 +129,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-center">
           <Link href="/" className="flex items-center gap-2" prefetch={false}>
-            <ShoppingCart className="h-8 w-8 text-primary" />
+            <KarigarKartLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
         </div>
@@ -141,7 +142,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" prefetch={false}>
-          <ShoppingCart className="h-8 w-8 text-primary" />
+          <KarigarKartLogoIcon className="h-8 w-8 text-primary" /> {/* Updated icon */}
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
 
@@ -195,7 +196,7 @@ export default function Header() {
                 </ScrollArea>
                  {workerNotifications.length > 0 && unreadCount > 0 && (
                     <div className="p-2 border-t">
-                        <Button variant="link" size="sm" className="w-full text-primary" onClick={() => markAllAsRead(currentUser.uid)}>
+                        <Button variant="link" size="sm" className="w-full text-primary" onClick={() => currentUser && markAllAsRead(currentUser.uid)}>
                             Mark all as read
                         </Button>
                     </div>
@@ -221,7 +222,7 @@ export default function Header() {
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b mb-2">
                   <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
-                      <ShoppingCart className="h-7 w-7 text-primary" />
+                      <KarigarKartLogoIcon className="h-7 w-7 text-primary" /> {/* Updated icon */}
                     <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
                 </div>
@@ -252,7 +253,7 @@ export default function Header() {
                   </div>
                 )}
               </div>
-              <SheetClose onClick={closeSheet} /> {/* This should be SheetClose from ui/sheet for proper functionality */}
+              <SheetClose onClick={closeSheet} /> 
             </SheetContent>
           </Sheet>
         </div>
@@ -260,4 +261,3 @@ export default function Header() {
     </header>
   );
 }
-
