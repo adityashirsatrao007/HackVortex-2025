@@ -4,10 +4,10 @@
 import type { User as FirebaseUser, UserCredential } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
-import { 
-  onAuthStateChanged, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile
 } from 'firebase/auth';
@@ -36,7 +36,7 @@ const detectUserRole = (email: string | null): UserRole => {
   if (MOCK_WORKERS.some(worker => worker.email === email)) {
     return 'worker';
   }
-  return 'customer'; 
+  return 'customer';
 };
 
 const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null): boolean => {
@@ -46,7 +46,11 @@ const checkProfileCompletion = (user: FirebaseUser | null, role: UserRole | null
     return !!(customerProfile && customerProfile.address && customerProfile.address.trim() !== '');
   } else if (role === 'worker') {
     const workerProfile = MOCK_WORKERS.find(w => w.email === user.email);
-    return !!(workerProfile && workerProfile.skills && workerProfile.skills.length > 0 && workerProfile.bio && workerProfile.bio.trim() !== '');
+    // For worker, ensure skills, bio, and primary location/address are present
+    return !!(workerProfile &&
+               workerProfile.skills && workerProfile.skills.length > 0 &&
+               workerProfile.bio && workerProfile.bio.trim() !== '' &&
+               (workerProfile as any).address && (workerProfile as any).address.trim() !== '');
   }
   return false;
 };
@@ -62,8 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAuthLoading = useCallback(() => {
     setLoading(true);
-     // Re-evaluate profile completion, then set loading to false
-     // This timeout is to ensure state updates propagate before dependent effects run
     setTimeout(() => {
         if (auth.currentUser) {
             const role = detectUserRole(auth.currentUser.email);
@@ -98,9 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = userCredential.user;
       const role = detectUserRole(email);
       setUserAppRole(role);
-      setIsProfileComplete(checkProfileCompletion(user, role));
+      const profileComplete = checkProfileCompletion(user, role);
+      setIsProfileComplete(profileComplete);
       toast({ title: "Logged In", description: "Welcome back!" });
-      if (!checkProfileCompletion(user, role)) {
+      if (!profileComplete) {
         router.push('/profile?new=true');
       } else {
         router.push('/dashboard');
@@ -120,24 +123,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       if (userCredential.user) {
         await updateProfile(userCredential.user, { displayName: name });
-        // User is new, so profile is incomplete
-        setUserAppRole(role);
-        setIsProfileComplete(false); 
-        setCurrentUser(auth.currentUser); // Update currentUser state
-         // Add to mock constants if not present (for demo persistence)
+
+        // --- FIX: Update mock arrays BEFORE setting app role and current user states ---
         if (role === 'customer' && !MOCK_CUSTOMERS.find(c => c.email === email)) {
-            MOCK_CUSTOMERS.push({ id: userCredential.user.uid, name, email, role, address: '' });
+            MOCK_CUSTOMERS.push({ id: userCredential.user.uid, name, email, role, address: '' } as Customer);
         } else if (role === 'worker' && !MOCK_WORKERS.find(w => w.email === email)) {
-            MOCK_WORKERS.push({ 
-                id: userCredential.user.uid, name, email, role, skills: [], 
-                location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0 
-            });
+            MOCK_WORKERS.push({
+                id: userCredential.user.uid, name, email, role, skills: [],
+                location: { lat: 0, lng: 0 }, isVerified: false, rating: 0, bio: '', hourlyRate: 0,
+                // Add address field for workers too, as profile completion checks it
+                address: ''
+            } as WorkerType & { address?: string });
         }
+        // --- End of FIX ---
+
+        // User is new, so profile is incomplete
+        setUserAppRole(role); // Set role from form
+        setIsProfileComplete(false);
+        setCurrentUser(auth.currentUser); // Update currentUser state with the latest from Firebase
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}!` });
       router.push('/profile?new=true'); // Redirect to profile to complete it
       return userCredential;
-    } catch (error: any) {
+    } catch (error: any) { // Added missing opening brace
       console.error("Signup error:", error);
       toast({ variant: "destructive", title: "Signup Failed", description: error.message });
     } finally {
@@ -149,10 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await firebaseSignOut(auth);
+      setCurrentUser(null); // Explicitly set currentUser to null on logout
       setUserAppRole(null);
       setIsProfileComplete(false);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login'); 
+      router.push('/login');
     } catch (error: any) {
       console.error("Logout error:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message });
@@ -162,14 +171,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const markProfileComplete = useCallback(() => {
-    setIsProfileComplete(true);
-    // Optionally refresh user details from mock constants if they were updated
     if (currentUser) {
-        const role = detectUserRole(currentUser.email);
-        // This ensures that if MOCK_DATA was updated, the completion check reflects it
-        setIsProfileComplete(checkProfileCompletion(currentUser, role));
+        const role = userAppRole || detectUserRole(currentUser.email); // Use existing userAppRole or re-detect
+        if (role) { // Ensure role is not null
+             setUserAppRole(role); // Re-affirm role if needed
+             setIsProfileComplete(checkProfileCompletion(currentUser, role));
+        } else {
+            setIsProfileComplete(false); // Fallback if role cannot be determined
+        }
+    } else {
+        setIsProfileComplete(false); // No current user, profile cannot be complete
     }
-  }, [currentUser]);
+  }, [currentUser, userAppRole]);
+
 
   const value = {
     currentUser,
