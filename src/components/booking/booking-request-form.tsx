@@ -18,15 +18,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Clock, Send } from "lucide-react";
+import { CalendarIcon, Clock, Send, MapPinIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { ServiceCategory, Worker, Booking } from "@/lib/types"; // Added Booking
+import type { ServiceCategory, Worker, Booking } from "@/lib/types"; 
 import { SERVICE_CATEGORIES, MOCK_BOOKINGS, MOCK_CUSTOMERS } from "@/lib/constants";
 import React from "react";
-import { useAuth } from "@/hooks/use-auth"; // Added useAuth
-import { useNotification } from "@/contexts/notification-context"; // Added useNotification
+import { useAuth } from "@/hooks/use-auth"; 
+import { useNotification } from "@/contexts/notification-context"; 
 
 const bookingFormSchema = z.object({
   serviceCategory: z.enum(SERVICE_CATEGORIES.map(sc => sc.value) as [ServiceCategory, ...ServiceCategory[]], {
@@ -39,7 +39,7 @@ const bookingFormSchema = z.object({
     message: "Please enter a valid time (HH:MM)."
   }),
   location: z.string().min(5, { message: "Location must be at least 5 characters." }),
-  notes: z.string().optional(),
+  notes: z.string().max(300, "Notes cannot exceed 300 characters.").optional(),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -59,8 +59,8 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     defaultValues: {
       serviceCategory: worker.skills[0] || undefined,
       date: undefined,
-      time: "",
-      location: "",
+      time: "09:00", // Default to a common start time
+      location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "", // Pre-fill if customer address exists
       notes: "",
     },
   });
@@ -73,32 +73,38 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
 
     const customerName = currentUser.displayName || MOCK_CUSTOMERS.find(c => c.email === currentUser.email)?.name || "A Customer";
     
-    // Create a mock booking object
     const newBooking: Booking = {
-      id: `booking-${Date.now()}`,
+      id: `booking-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       customerId: currentUser.uid,
       customerName: customerName,
       workerId: worker.id,
       workerName: worker.name,
       serviceCategory: data.serviceCategory as ServiceCategory,
       dateTime: new Date(`${format(data.date, "yyyy-MM-dd")}T${data.time}:00`).toISOString(),
-      status: 'pending', // New bookings start as pending
+      status: 'pending', 
       locationPreview: data.location,
       notes: data.notes,
     };
 
-    MOCK_BOOKINGS.push(newBooking); // Add to mock bookings list
-    addNotification(newBooking); // Add notification for the worker
+    MOCK_BOOKINGS.push(newBooking); 
+    addNotification(newBooking); 
 
     toast({
       title: "Booking Request Sent!",
       description: `Your request for ${data.serviceCategory} with ${worker.name} on ${format(data.date, "PPP")} at ${data.time} has been sent.`,
+      className: "bg-green-500 text-white",
     });
-    form.reset();
-    onFormSubmit?.(); // Close dialog or other actions
+    form.reset({
+        serviceCategory: worker.skills[0] || undefined,
+        date: undefined,
+        time: "09:00",
+        location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "",
+        notes: ""
+    });
+    onFormSubmit?.(); 
   }
 
-  const timeSlots = Array.from({ length: (18 - 8) * 2 }, (_, i) => {
+  const timeSlots = Array.from({ length: (18 - 8) * 2 + 1 }, (_, i) => { // Include 18:00
     const hour = 8 + Math.floor(i / 2);
     const minute = (i % 2) * 30;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -106,7 +112,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-2">
         <FormField
           control={form.control}
           name="serviceCategory"
@@ -115,7 +121,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
               <FormLabel>Service Category</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="shadow-sm">
                     <SelectValue placeholder="Select a service" />
                   </SelectTrigger>
                 </FormControl>
@@ -125,6 +131,9 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
                       {cat.label}
                     </SelectItem>
                   ))}
+                  {SERVICE_CATEGORIES.filter(sc => worker.skills.includes(sc.value)).length === 0 && (
+                    <SelectItem value="disabled" disabled>No specific skills listed for this worker</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -145,7 +154,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full pl-3 text-left font-normal shadow-sm",
                           !field.value && "text-muted-foreground"
                         )}
                       >
@@ -181,7 +190,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
                 <FormLabel>Time</FormLabel>
                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="shadow-sm">
                       <Clock className="mr-2 h-4 w-4 opacity-50 inline-block"/>
                       <SelectValue placeholder="Select a time slot" />
                     </SelectTrigger>
@@ -203,9 +212,9 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
           name="location"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Service Location / Address</FormLabel>
+              <FormLabel className="flex items-center"><MapPinIcon className="mr-2 h-4 w-4 text-primary" /> Service Location / Address</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., 123 Main St, Anytown" {...field} />
+                <Input placeholder="e.g., 123 Main St, Anytown, Landmark..." {...field} className="shadow-sm"/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -217,11 +226,11 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes (Optional)</FormLabel>
+              <FormLabel>Notes / Instructions (Optional)</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Any specific details for the worker..."
-                  className="resize-none"
+                  placeholder="Any specific details for the worker (e.g., problem description, entry instructions)..."
+                  className="resize-none min-h-[100px] shadow-sm"
                   {...field}
                 />
               </FormControl>
@@ -229,8 +238,8 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Send className="mr-2 h-4 w-4" /> Send Booking Request
+        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg text-base py-6">
+          <Send className="mr-2 h-5 w-5" /> Send Booking Request
         </Button>
       </form>
     </Form>

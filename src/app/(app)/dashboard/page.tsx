@@ -8,9 +8,9 @@ import type { Worker, ServiceCategory } from '@/lib/types';
 import { MOCK_WORKERS } from '@/lib/constants';
 import { WorkerCard } from '@/components/worker/worker-card';
 import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, ShieldCheck } from 'lucide-react';
+import { Info, ShieldCheck, Briefcase, TrendingUp, CheckSquare } from 'lucide-react';
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
@@ -42,41 +42,57 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Worker Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center">
+            <Briefcase className="mr-3 h-8 w-8 text-primary" />
+            Worker Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Manage your jobs, schedule, and profile. Welcome, {currentUser?.displayName || 'Worker'}!
           </p>
         </div>
-        <Card>
+        <Card className="shadow-xl">
           <CardHeader>
             <CardTitle>Overview</CardTitle>
+            <CardDescription>Your current job statistics and alerts.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Coming Soon!</AlertTitle>
-              <AlertDescription>
-                Your personalized worker dashboard with job management, earnings, and more is under construction.
-                For now, please use the "Schedule" and "Profile" sections.
+            <Alert className="mb-6 bg-blue-50 border-blue-200">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-700">Dashboard Coming Soon!</AlertTitle>
+              <AlertDescription className="text-blue-600">
+                More features like earnings reports and performance analytics are under construction.
+                For now, please use the "Schedule" and "Profile" sections to manage your work.
               </AlertDescription>
             </Alert>
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-secondary/30">
-                    <CardHeader>
-                        <CardTitle className="text-lg">New Job Requests</CardTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="bg-secondary/40 hover:shadow-lg transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">New Job Requests</CardTitle>
+                        <CheckSquare className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">0</p>
+                        <div className="text-2xl font-bold">0</div>
                         <p className="text-xs text-muted-foreground">No new requests currently.</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-secondary/30">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Upcoming Confirmed Jobs</CardTitle>
+                <Card className="bg-secondary/40 hover:shadow-lg transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Upcoming Confirmed Jobs</CardTitle>
+                        <CalendarClock className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">0</p>
-                         <p className="text-xs text-muted-foreground">Check your schedule for upcoming jobs.</p>
+                        <div className="text-2xl font-bold">0</div>
+                         <p className="text-xs text-muted-foreground">Check your schedule for details.</p>
+                    </CardContent>
+                </Card>
+                 <Card className="bg-secondary/40 hover:shadow-lg transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Jobs Completed</CardTitle>
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">0</div>
+                         <p className="text-xs text-muted-foreground">Keep up the great work!</p>
                     </CardContent>
                 </Card>
             </div>
@@ -102,22 +118,42 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <WorkerMap workers={filteredWorkers} selectedWorkerId={selectedWorkerId} onWorkerSelect={handleWorkerSelectOnMap} />
         </div>
-        <div className="lg:col-span-1 space-y-4 max-h-[550px] overflow-y-auto pr-2">
-            <h2 className="text-xl font-semibold">Available Workers ({filteredWorkers.length})</h2>
-            {filteredWorkers.length > 0 ? (
-                filteredWorkers.map(worker => (
-                    <WorkerCard 
-                        key={worker.id} 
-                        worker={worker} 
-                        isSelected={worker.id === selectedWorkerId}
-                        onSelect={() => setSelectedWorkerId(worker.id)}
-                    />
-                ))
-            ) : (
-                <p className="text-muted-foreground">No workers found matching your criteria.</p>
-            )}
+        <div className="lg:col-span-1 space-y-4">
+            <h2 className="text-xl font-semibold px-1">Available Workers ({filteredWorkers.length})</h2>
+            <div className="max-h-[550px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+              {filteredWorkers.length > 0 ? (
+                  filteredWorkers.map(worker => (
+                      <WorkerCard 
+                          key={worker.id} 
+                          worker={worker} 
+                          isSelected={worker.id === selectedWorkerId}
+                          onSelect={() => setSelectedWorkerId(worker.id)}
+                      />
+                  ))
+              ) : (
+                  <p className="text-muted-foreground p-4 text-center">No workers found matching your criteria.</p>
+              )}
+            </div>
         </div>
       </div>
     </div>
   );
 }
+
+// Add this to your globals.css or a relevant CSS file if you want custom scrollbars for the worker list
+/*
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--secondary) / 0.5);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.7);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+*/

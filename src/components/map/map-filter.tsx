@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -7,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,23 +28,24 @@ export function MapFilter({ onFilterChange }: MapFilterProps) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const query = formData.get("searchQuery") as string;
-    onFilterChange({ query });
+    onFilterChange({ query }); // TODO: This needs to also pass the current category
   };
 
   return (
-    <Card className="shadow-lg mb-6">
+    <Card className="shadow-xl mb-6">
       <CardHeader>
         <CardTitle className="flex items-center text-xl">
             <Filter className="mr-2 h-5 w-5 text-primary" />
             Filter Workers
         </CardTitle>
+        <CardDescription>Narrow down your search for the perfect professional.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="serviceCategory">Service Category</Label>
             <Select onValueChange={handleCategoryChange} defaultValue="all">
-              <SelectTrigger id="serviceCategory" className="w-full">
+              <SelectTrigger id="serviceCategory" className="w-full shadow-sm">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
@@ -56,16 +58,16 @@ export function MapFilter({ onFilterChange }: MapFilterProps) {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="searchQuery">Search by Name or Skill</Label>
             <div className="flex gap-2">
               <Input
                 id="searchQuery"
                 name="searchQuery"
                 placeholder="e.g., Rajesh Kumar or plumbing"
-                className="flex-grow"
+                className="flex-grow shadow-sm"
               />
-              <Button type="submit" variant="outline">
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow hover:shadow-md">
                 <Search className="mr-0 md:mr-2 h-4 w-4" />
                 <span className="hidden md:inline">Search</span>
               </Button>

@@ -35,10 +35,10 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
         className={cn(
           'text-sm font-medium transition-colors',
           isDesktop 
-            ? 'hover:text-primary hover:bg-accent/10 px-3 py-2 rounded-md' 
-            : 'hover:text-primary py-3 px-3 rounded-md hover:bg-accent/10 flex items-center text-base gap-2',
+            ? 'hover:text-primary hover:bg-primary/10 px-3 py-2 rounded-md' 
+            : 'hover:text-primary py-3 px-3 rounded-md hover:bg-primary/10 flex items-center text-base gap-2',
           isActive 
-            ? (isDesktop ? 'text-primary bg-accent/15 font-semibold' : 'text-primary font-semibold bg-accent/15') 
+            ? (isDesktop ? 'text-primary bg-primary/15 font-semibold' : 'text-primary font-semibold bg-primary/15') 
             : 'text-muted-foreground',
           className
         )}
@@ -51,8 +51,8 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
 
 function NotificationItem({ notification, onMarkRead }: { notification: NotificationType, onMarkRead: (id: string) => void }) {
   return (
-    <div className={cn("p-3 border-b border-border/50", !notification.read && "bg-primary/5")}>
-      <p className="text-sm font-medium">{notification.message}</p>
+    <div className={cn("p-3 border-b border-border/50 hover:bg-secondary/50 transition-colors", !notification.read && "bg-primary/5 font-medium")}>
+      <p className="text-sm">{notification.message}</p>
       <p className="text-xs text-muted-foreground mb-1">
         For {notification.serviceCategory} by {notification.customerName}
       </p>
@@ -61,7 +61,7 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
           {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
         </p>
         {!notification.read && (
-          <Button variant="ghost" size="sm" className="h-auto p-1 text-xs text-primary" onClick={() => onMarkRead(notification.id)}>
+          <Button variant="link" size="sm" className="h-auto p-1 text-xs text-primary hover:text-accent" onClick={() => onMarkRead(notification.id)}>
             Mark as read
           </Button>
         )}
@@ -101,9 +101,6 @@ export default function Header() {
       ];
     }
   } else if (currentUser && !isProfileComplete) { 
-     // User is logged in but profile is incomplete.
-     // They will be redirected to /profile by AppLayout.
-     // No primary navigation links are needed here.
      navItems = [];
   }
 
@@ -140,14 +137,14 @@ export default function Header() {
 
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 items-center justify-between">
         <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" prefetch={false}>
           <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
 
-        {currentUser && (
+        {currentUser && isProfileComplete && (
           <nav className="hidden items-center gap-1 md:flex">
             {navItems.map((item) => (
               <NavLink key={item.href} href={item.href} isDesktop>
@@ -163,7 +160,7 @@ export default function Header() {
               <Button variant="outline" asChild>
                 <Link href="/login"><LogIn className="mr-2 h-4 w-4" />Login</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" />Sign Up</Link>
               </Button>
             </div>
@@ -172,19 +169,19 @@ export default function Header() {
           {currentUser && userAppRole === 'worker' && isProfileComplete && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="relative rounded-full">
+                  <Bell className="h-5 w-5 text-primary" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+                    <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent border-2 border-background"></span>
                     </span>
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0">
-                <div className="p-3 border-b">
-                  <h4 className="font-medium text-sm">Notifications</h4>
+              <PopoverContent className="w-80 p-0 shadow-xl">
+                <div className="p-3 border-b bg-secondary/50">
+                  <h4 className="font-medium text-sm text-secondary-foreground">Notifications</h4>
                 </div>
                 <ScrollArea className="h-[300px]">
                   {workerNotifications.length > 0 ? (
@@ -196,8 +193,8 @@ export default function Header() {
                   )}
                 </ScrollArea>
                  {workerNotifications.length > 0 && unreadCount > 0 && (
-                    <div className="p-2 border-t">
-                        <Button variant="link" size="sm" className="w-full text-primary" onClick={() => currentUser && markAllAsRead(currentUser.uid)}>
+                    <div className="p-2 border-t flex justify-end">
+                        <Button variant="link" size="sm" className="text-primary hover:text-accent" onClick={() => currentUser && markAllAsRead(currentUser.uid)}>
                             Mark all as read
                         </Button>
                     </div>
@@ -214,12 +211,12 @@ export default function Header() {
 
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden rounded-full">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+            <SheetContent side="right" className="w-[280px] sm:w-[320px] p-0">
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b mb-2">
                   <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
@@ -228,8 +225,8 @@ export default function Header() {
                   </Link>
                 </div>
                 <nav className="flex-grow p-4 space-y-1">
-                  {currentUser ? (
-                    navItems.map((item) => ( // navItems will be empty if profile is incomplete
+                  {currentUser && isProfileComplete ? (
+                    navItems.map((item) => ( 
                       <NavLink 
                         key={item.href} 
                         href={item.href} 
@@ -239,12 +236,12 @@ export default function Header() {
                         {item.label}
                       </NavLink>
                     ))
-                  ) : (
+                  ) : !currentUser && !loading ? (
                     <>
                       <NavLink href="/login" onClick={closeSheet}><LogIn className="mr-2 h-4 w-4" />Login</NavLink>
                       <NavLink href="/signup" onClick={closeSheet}><UserPlus className="mr-2 h-4 w-4" />Sign Up</NavLink>
                     </>
-                  )}
+                  ) : null }
                 </nav>
                 {currentUser && (
                   <div className="p-4 border-t mt-auto">

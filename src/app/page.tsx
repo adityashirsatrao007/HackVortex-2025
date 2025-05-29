@@ -24,10 +24,10 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg">
                     <Link href="/signup">Get Started</Link>
                   </Button>
-                  <Button variant="outline" size="lg" asChild>
+                  <Button variant="outline" size="lg" asChild className="shadow hover:shadow-md">
                     <Link href="/dashboard">Find Artisans</Link> 
                   </Button>
                 </div>
@@ -38,7 +38,7 @@ export default function LandingPage() {
                 data-ai-hint="artisans tools"
                 width={600}
                 height={400}
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square border border-border shadow-xl"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow"
               />
             </div>
           </div>
@@ -49,7 +49,7 @@ export default function LandingPage() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm text-secondary-foreground">Key Features</div>
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose Karigar Kart?</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   We provide a seamless, secure, and reliable way to connect with local professionals.
@@ -57,30 +57,30 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-8 w-8 text-primary" />
-                  <h3 className="text-lg font-bold">Verified Artisans</h3>
+              <div className="grid gap-2 p-6 rounded-lg border bg-card shadow-lg hover:shadow-xl hover:border-primary/50 transition-all duration-300 ease-in-out transform hover:-translate-y-1">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-10 w-10 text-primary" />
+                  <h3 className="text-xl font-bold">Verified Artisans</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground pt-1">
                   All artisans are verified for your safety and peace of mind. (Aadhaar, Selfie + GPS).
                 </p>
               </div>
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-8 w-8 text-primary" />
-                  <h3 className="text-lg font-bold">Location-Based Search</h3>
+              <div className="grid gap-2 p-6 rounded-lg border bg-card shadow-lg hover:shadow-xl hover:border-primary/50 transition-all duration-300 ease-in-out transform hover:-translate-y-1">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-10 w-10 text-primary" />
+                  <h3 className="text-xl font-bold">Location-Based Search</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground pt-1">
                   Find skilled professionals near you with our easy-to-use map interface.
                 </p>
               </div>
-              <div className="grid gap-2 p-4 rounded-lg border bg-card shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 ease-in-out">
-                <div className="flex items-center gap-2">
-                   <Star className="h-8 w-8 text-primary" />
-                  <h3 className="text-lg font-bold">Ratings & Reviews</h3>
+              <div className="grid gap-2 p-6 rounded-lg border bg-card shadow-lg hover:shadow-xl hover:border-primary/50 transition-all duration-300 ease-in-out transform hover:-translate-y-1">
+                <div className="flex items-center gap-3">
+                   <Star className="h-10 w-10 text-primary" />
+                  <h3 className="text-xl font-bold">Ratings & Reviews</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground pt-1">
                   Make informed decisions based on genuine customer feedback and ratings.
                 </p>
               </div>
@@ -100,19 +100,19 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="mx-auto w-full max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-8 mt-8">
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold">1</div>
-                <h3 className="font-semibold mt-2">Search & Discover</h3>
+              <div className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-card/80 transition-colors">
+                <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold shadow-md">1</div>
+                <h3 className="font-semibold text-lg mt-3">Search & Discover</h3>
                 <p className="text-sm text-muted-foreground">Find artisans by skill and location.</p>
               </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold">2</div>
-                <h3 className="font-semibold mt-2">Book & Confirm</h3>
+              <div className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-card/80 transition-colors">
+                <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold shadow-md">2</div>
+                <h3 className="font-semibold text-lg mt-3">Book & Confirm</h3>
                 <p className="text-sm text-muted-foreground">Request a booking at your preferred time.</p>
               </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold">3</div>
-                <h3 className="font-semibold mt-2">Rate & Review</h3>
+              <div className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-card/80 transition-colors">
+                <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold shadow-md">3</div>
+                <h3 className="font-semibold text-lg mt-3">Rate & Review</h3>
                 <p className="text-sm text-muted-foreground">Share your experience after the job is done.</p>
               </div>
             </div>
