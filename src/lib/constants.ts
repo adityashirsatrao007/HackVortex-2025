@@ -20,6 +20,7 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     skills: ['plumber', 'electrician'],
     location: { lat: 12.9716, lng: 77.5946 },
     isVerified: true,
+    aadhaarNumber: '123456789012',
     aadhaarVerified: true,
     selfieWithGpsUrl: 'https://placehold.co/100x100.png',
     rating: 4.5,
@@ -38,6 +39,7 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     skills: ['carpenter'],
     location: { lat: 12.9352, lng: 77.6245 },
     isVerified: true,
+    aadhaarNumber: '234567890123',
     aadhaarVerified: false,
     rating: 4.8,
     bio: 'Skilled carpenter specializing in custom furniture and repairs.',
@@ -55,7 +57,8 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     skills: ['mason', 'painter'],
     location: { lat: 13.0000, lng: 77.6500 },
     isVerified: false,
-    aadhaarVerified: true,
+    // No aadhaarNumber provided for this worker initially
+    aadhaarVerified: false,
     selfieWithGpsUrl: 'https://placehold.co/100x100.png',
     rating: 4.2,
     bio: 'Dedicated mason and painter. Committed to quality workmanship.',
@@ -98,63 +101,52 @@ const DEFAULT_MOCK_CUSTOMERS: Customer[] = [
 
 const WORKERS_STORAGE_KEY = 'karigarKartMockWorkers';
 const CUSTOMERS_STORAGE_KEY = 'karigarKartMockCustomers';
+const USER_ROLE_STORAGE_KEY_PREFIX = 'karigarKartUserRole_';
 
-let MOCK_WORKERS_INSTANCE: Worker[] | undefined = undefined;
-let MOCK_CUSTOMERS_INSTANCE: Customer[] | undefined = undefined;
+
+let MOCK_WORKERS_INSTANCE: Worker[] = [...DEFAULT_MOCK_WORKERS];
+let MOCK_CUSTOMERS_INSTANCE: Customer[] = [...DEFAULT_MOCK_CUSTOMERS];
 
 if (typeof window !== 'undefined') {
   try {
     const storedWorkers = localStorage.getItem(WORKERS_STORAGE_KEY);
     if (storedWorkers) {
       const parsedWorkers = JSON.parse(storedWorkers);
-      // Ensure parsedWorkers is an array and not empty before assigning
       if (Array.isArray(parsedWorkers) && parsedWorkers.length > 0) {
         MOCK_WORKERS_INSTANCE = parsedWorkers;
+      } else {
+        // If localStorage has an empty array or invalid data, re-initialize with defaults and save
+        localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
       }
+    } else {
+        // If nothing in localStorage, save defaults
+        localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
     }
   } catch (e) {
-    console.error("Error parsing stored workers from localStorage:", e);
-    // localStorage.removeItem(WORKERS_STORAGE_KEY); // Optionally clear corrupted data
-  }
-  
-  // If MOCK_WORKERS_INSTANCE is still undefined (not found, empty, or error), initialize with defaults and save.
-  if (!MOCK_WORKERS_INSTANCE) {
-    MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
-    try {
-      localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
-    } catch (e) {
-      console.error("Error saving default workers to localStorage:", e);
-    }
+    console.error("Error processing stored workers from localStorage:", e);
+    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE)); // Fallback to defaults
   }
 
   try {
     const storedCustomers = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
     if (storedCustomers) {
       const parsedCustomers = JSON.parse(storedCustomers);
-      // Ensure parsedCustomers is an array and not empty before assigning
       if (Array.isArray(parsedCustomers) && parsedCustomers.length > 0) {
         MOCK_CUSTOMERS_INSTANCE = parsedCustomers;
+      } else {
+        localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
       }
+    } else {
+        localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
     }
   } catch (e) {
-    console.error("Error parsing stored customers from localStorage:", e);
-    // localStorage.removeItem(CUSTOMERS_STORAGE_KEY); // Optionally clear corrupted data
-  }
-
-  // If MOCK_CUSTOMERS_INSTANCE is still undefined, initialize with defaults and save.
-  if (!MOCK_CUSTOMERS_INSTANCE) {
-    MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
-    try {
-      localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
-    } catch (e) {
-      console.error("Error saving default customers to localStorage:", e);
-    }
+    console.error("Error processing stored customers from localStorage:", e);
+    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE)); // Fallback to defaults
   }
 }
 
-// These exports will now use the instances that have been robustly initialized/defaulted.
-export const MOCK_WORKERS: Worker[] = MOCK_WORKERS_INSTANCE || [...DEFAULT_MOCK_WORKERS];
-export const MOCK_CUSTOMERS: Customer[] = MOCK_CUSTOMERS_INSTANCE || [...DEFAULT_MOCK_CUSTOMERS];
+export const MOCK_WORKERS: Worker[] = MOCK_WORKERS_INSTANCE;
+export const MOCK_CUSTOMERS: Customer[] = MOCK_CUSTOMERS_INSTANCE;
 
 
 export function saveWorkersToLocalStorage() {
@@ -180,7 +172,7 @@ export function saveCustomersToLocalStorage() {
 export function saveUserRoleToLocalStorage(userId: string, role: UserRole) {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(`userRole_${userId}`, role);
+      localStorage.setItem(`${USER_ROLE_STORAGE_KEY_PREFIX}${userId}`, role);
     } catch (e) {
       console.error("Error saving user role to localStorage:", e);
     }
@@ -190,7 +182,7 @@ export function saveUserRoleToLocalStorage(userId: string, role: UserRole) {
 export function loadUserRoleFromLocalStorage(userId: string): UserRole | null {
   if (typeof window !== 'undefined') {
     try {
-      const role = localStorage.getItem(`userRole_${userId}`);
+      const role = localStorage.getItem(`${USER_ROLE_STORAGE_KEY_PREFIX}${userId}`);
       return role ? role as UserRole : null;
     } catch (e) {
       console.error("Error loading user role from localStorage:", e);
@@ -202,10 +194,11 @@ export function loadUserRoleFromLocalStorage(userId: string): UserRole | null {
 
 export function detectUserRoleFromMocks(email: string | null): UserRole | null {
   if (!email) return null;
-  if (MOCK_WORKERS.some(worker => worker.email === email)) {
+  // Ensure MOCK_WORKERS and MOCK_CUSTOMERS are arrays before calling .some
+  if (Array.isArray(MOCK_WORKERS) && MOCK_WORKERS.some(worker => worker.email === email)) {
     return 'worker';
   }
-  if (MOCK_CUSTOMERS.some(customer => customer.email === email)) {
+  if (Array.isArray(MOCK_CUSTOMERS) && MOCK_CUSTOMERS.some(customer => customer.email === email)) {
     return 'customer';
   }
   return null;
@@ -215,13 +208,13 @@ export function checkProfileCompletion(
   user: { email: string | null; uid: string; displayName: string | null }, 
   role: UserRole | null
 ): boolean {
-  if (!user || !role) return false; // Simplified: if no role, profile can't be complete. Email null check is implicit if matching by ID.
+  if (!user || !role || !user.email) return false; 
 
   if (role === 'customer') {
-    const customerProfile = MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email);
+    const customerProfile = Array.isArray(MOCK_CUSTOMERS) ? MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email) : undefined;
     return !!(customerProfile && customerProfile.address && customerProfile.address.trim() !== '');
   } else if (role === 'worker') {
-    const workerProfile = MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email);
+    const workerProfile = Array.isArray(MOCK_WORKERS) ? MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email) : undefined;
     return !!(
       workerProfile &&
       workerProfile.skills && workerProfile.skills.length > 0 &&
@@ -255,10 +248,10 @@ export const MOCK_REVIEWS: Review[] = [
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
-    customerName: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
-    workerName: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -268,10 +261,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
-    customerName: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'priya.worker@example.com')?.id || 'worker-2',
-    workerName: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'priya.worker@example.com')?.name || 'Priya Singh',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.id || 'worker-2',
+    workerName: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.name || 'Priya Singh',
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -281,10 +274,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
-    customerName: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'amit.worker@example.com')?.id || 'worker-3',
-    workerName: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'amit.worker@example.com')?.name || 'Amit Patel',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.id || 'worker-3',
+    workerName: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.name || 'Amit Patel',
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',
@@ -293,10 +286,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'customer@example.com')?.id || 'customer-test',
-    customerName: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'customer@example.com')?.name || 'Test Customer User',
-    workerId: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
-    workerName: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.id || 'customer-test',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.name || 'Test Customer User',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'pending',
@@ -305,10 +298,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-5',
-    customerId: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
-    customerName: (MOCK_CUSTOMERS_INSTANCE || DEFAULT_MOCK_CUSTOMERS).find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
-    workerName: (MOCK_WORKERS_INSTANCE || DEFAULT_MOCK_WORKERS).find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',

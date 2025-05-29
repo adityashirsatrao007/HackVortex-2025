@@ -19,7 +19,7 @@ export interface BaseUser {
 
 export interface Customer extends BaseUser {
   role: 'customer';
-  address: string; // Made address mandatory for persistence check
+  address: string; 
 }
 
 export interface Worker extends BaseUser {
@@ -27,6 +27,7 @@ export interface Worker extends BaseUser {
   skills: ServiceCategory[];
   location: GeoLocation;
   isVerified: boolean;
+  aadhaarNumber?: string; // Added Aadhaar number
   aadhaarVerified?: boolean;
   selfieWithGpsUrl?: string;
   rating: number;
@@ -34,7 +35,7 @@ export interface Worker extends BaseUser {
   hourlyRate?: number;
   availability?: { day: string, start: string, end: string }[];
   totalJobs?: number;
-  address: string; // Added address for workers too, for profile completion consistency
+  address: string; 
 }
 
 export type BookingStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled' | 'rejected';

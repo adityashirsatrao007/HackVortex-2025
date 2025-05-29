@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage } from "@/lib/constants";
 import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2, Building, Briefcase, BadgeCheck, ShieldAlert } from "lucide-react";
+import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint } from "lucide-react"; // Added Fingerprint
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +33,6 @@ export default function ProfilePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Memoize initial page load conditions
   const needsRoleSelectionAtPageLoad = useMemo(() => {
     return searchParams.get('roleSelection') === 'true' || !userAppRole;
   }, [searchParams, userAppRole]);
@@ -51,8 +50,9 @@ export default function ProfilePage() {
   const [hourlyRateInput, setHourlyRateInput] = useState<number | string>('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://placehold.co/128x128.png');
+  const [aadhaarNumberInput, setAadhaarNumberInput] = useState(''); // New state for Aadhaar number
   
-  const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null); // For UI before confirming
+  const [selectedRoleForUi, setSelectedRoleForUi] = useState<UserRole | null>(null); 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function ProfilePage() {
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
 
       if (userAppRole) { 
-        setSelectedRoleForUi(userAppRole); // Sync UI role with context role
+        setSelectedRoleForUi(userAppRole); 
         let userProfile;
         if (userAppRole === 'worker') {
           userProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
@@ -72,6 +72,7 @@ export default function ProfilePage() {
             setHourlyRateInput(userProfile.hourlyRate?.toString() || '');
             setBio(userProfile.bio || '');
             setAddress(userProfile.address || '');
+            setAadhaarNumberInput(userProfile.aadhaarNumber || ''); // Load Aadhaar number
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           }
         } else if (userAppRole === 'customer') {
@@ -87,12 +88,11 @@ export default function ProfilePage() {
         }
       } else {
          setUsername(currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`);
-         setSelectedRoleForUi(null); // Ensure UI role is reset if context role is null
+         setSelectedRoleForUi(null); 
       }
     }
-  }, [currentUser, userAppRole]); // Removed username from dependencies to prevent loop
+  }, [currentUser, userAppRole]); 
 
-  // Effect for redirection after profile becomes complete
   useEffect(() => {
     if (authContextIsProfileComplete && (isNewUserCompletionFlowAtPageLoad || needsRoleSelectionAtPageLoad)) {
         router.push('/dashboard');
@@ -107,10 +107,7 @@ export default function ProfilePage() {
     }
     setIsSaving(true);
     await selectUserRoleAndInitializeProfile(selectedRoleForUi);
-    // userAppRole in AuthContext will update, triggering useEffect above to populate fields or keep them empty
-    // The page will re-render, and `userAppRole` will be set, hiding the role selection UI.
     setIsSaving(false);
-    // No explicit redirect here, the page re-renders to show profile fields.
   };
 
   const handleSaveChanges = async () => {
@@ -137,7 +134,7 @@ export default function ProfilePage() {
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
           profileDataIsValid = false;
         }
-        if (!address.trim()) { // Assuming address is now also mandatory for workers
+        if (!address.trim()) { 
           toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
           profileDataIsValid = false;
         }
@@ -160,26 +157,26 @@ export default function ProfilePage() {
         return;
     }
 
-    // Save to MOCK data
     if (userAppRole === 'worker') {
       const workerIdx = MOCK_WORKERS.findIndex(w => w.id === currentUser.uid);
       const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
-      const workerDataUpdate = {
+      const workerDataUpdate: Partial<Worker> = {
         name, username, skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
-        bio, avatarUrl, address, email // ensure email is saved if it was made editable
+        bio, avatarUrl, address, email,
+        aadhaarNumber: aadhaarNumberInput, // Save Aadhaar number
+        // aadhaarVerified status is admin controlled, so not set here by user
       };
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
       } else { 
-        // This case should ideally not happen if selectUserRoleAndInitializeProfile worked correctly
         MOCK_WORKERS.push({
             id: currentUser.uid,
             location: { lat: 0, lng: 0 }, 
-            isVerified: false, rating: 0, aadhaarVerified: false, 
+            isVerified: false, rating: 0, aadhaarVerified: MOCK_WORKERS[workerIdx]?.aadhaarVerified || false, 
             ...workerDataUpdate, 
             role: 'worker'
-        });
+        } as Worker); // Cast to Worker
       }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
@@ -200,7 +197,6 @@ export default function ProfilePage() {
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
-    // Redirection is now handled by the useEffect hook listening to authContextIsProfileComplete
   };
 
   if (authLoading) {
@@ -260,7 +256,6 @@ export default function ProfilePage() {
     );
   }
 
-  // If role is selected, render the main profile form
   const showIncompleteProfileAlert = (isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole && !authContextIsProfileComplete));
 
   return (
@@ -360,7 +355,20 @@ export default function ProfilePage() {
                         <Label htmlFor="bio">Bio {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                         <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about yourself and your experience..." className="min-h-[100px]" disabled={isSaving}/>
                     </div>
-                     <div className="flex items-center space-x-2 pt-2">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="aadhaarNumber" className="flex items-center">
+                            <Fingerprint className="mr-1.5 h-4 w-4 text-primary/80" /> Aadhaar Number
+                        </Label>
+                        <Input 
+                            id="aadhaarNumber" 
+                            value={aadhaarNumberInput} 
+                            onChange={(e) => setAadhaarNumberInput(e.target.value.replace(/\D/g, '').slice(0, 12))} 
+                            placeholder="Enter 12-digit Aadhaar" 
+                            maxLength={12}
+                            disabled={isSaving}
+                        />
+                    </div>
+                     <div className="flex items-center space-x-2 pt-2 md:pt-7"> {/* Adjusted padding for alignment */}
                         <Switch id="availability" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.isVerified || false} disabled />
                         <Label htmlFor="availability" className="flex items-center">
                             <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/>Profile Verified (Admin)
@@ -403,3 +411,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
