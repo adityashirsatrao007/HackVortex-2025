@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WorkerMap } from '@/components/map/worker-map';
 import { MapFilter } from '@/components/map/map-filter';
 import type { Worker, ServiceCategory } from '@/lib/types';
@@ -14,11 +14,22 @@ import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
-  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>(MOCK_WORKERS);
+  // Initialize filteredWorkers with a copy of MOCK_WORKERS.
+  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([...MOCK_WORKERS]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
+  // This effect runs when the component mounts and if currentUser changes.
+  // It ensures that filteredWorkers is based on the potentially updated MOCK_WORKERS.
+  useEffect(() => {
+    // Re-initialize/re-filter the list from the global MOCK_WORKERS array.
+    // This assumes MOCK_WORKERS has been mutated by signup/profile updates.
+    // We create a new array reference to ensure re-render.
+    setFilteredWorkers([...MOCK_WORKERS]);
+    setSelectedWorkerId(undefined); // Reset selected worker
+  }, [currentUser]); // Trigger when currentUser changes (e.g., after login/signup)
+
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
-    let workers = MOCK_WORKERS;
+    let workers = [...MOCK_WORKERS]; // Always start with a fresh copy of the current MOCK_WORKERS
     if (filters.category) {
       workers = workers.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
     }
@@ -26,7 +37,7 @@ export default function DashboardPage() {
       const queryLower = filters.query.toLowerCase();
       workers = workers.filter(worker =>
         worker.name.toLowerCase().includes(queryLower) ||
-        worker.skills.some(skill => skill.toLowerCase().includes(queryLower))
+        (worker.skills && worker.skills.some(skill => skill.toLowerCase().includes(queryLower)))
       );
     }
     setFilteredWorkers(workers);
