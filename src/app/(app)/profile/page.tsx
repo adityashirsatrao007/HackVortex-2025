@@ -30,7 +30,7 @@ const getMockUser = (userId: string | undefined): User | undefined => {
     };
   }
   // For demo, if not customer, assume it's the first mock worker
-  return MOCK_WORKERS[0]; 
+  return MOCK_WORKERS.find(w => w.id === userId) || MOCK_WORKERS[0]; 
 }
 
 
@@ -44,7 +44,7 @@ export default function ProfilePage() {
   
   // Form field states
   const [name, setName] = useState('');
-  const [email, setEmail] = useState(''); // Email might not be editable depending on auth provider
+  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [skillsInput, setSkillsInput] = useState(''); // For worker
   const [hourlyRateInput, setHourlyRateInput] = useState<number | string>(''); // For worker
@@ -65,7 +65,7 @@ export default function ProfilePage() {
         setUser(fetchedUser);
         
         setName(fetchedUser.name || '');
-        setEmail(fetchedUser.email || ''); // Typically not editable directly
+        setEmail(fetchedUser.email || '');
         
         if (fetchedUser.role === 'customer') {
             setAddress((fetchedUser as Customer).address || '');
@@ -84,9 +84,10 @@ export default function ProfilePage() {
     if (!user) return;
 
     // Here you would typically send the updated data to your backend
+    // For email changes, Firebase Auth requires specific handling (e.g., updateEmail, re-authentication)
     console.log("Saving changes:", {
       name,
-      email, // Usually not changed here if managed by Firebase auth directly
+      email,
       address,
       ...(user.role === 'worker' && {
         skills: skillsInput.split(',').map(s => s.trim() as ServiceCategory),
@@ -156,7 +157,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={email} readOnly className="bg-muted/50 cursor-not-allowed" title="Email cannot be changed here."/>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               {user.role === 'customer' && (
                  <div className="space-y-1 md:col-span-2">
