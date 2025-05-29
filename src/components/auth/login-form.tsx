@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { Handshake, LogIn } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth"; // Import useAuth
+import { Handshake, LogIn, Loader2 } from "lucide-react"; // Added Loader2
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -27,7 +27,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 export function LoginForm() {
-  const { toast } = useToast();
+  const { login, loading } = useAuth(); // Get login function and loading state
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -36,14 +36,8 @@ export function LoginForm() {
     },
   });
 
-  function onSubmit(data: LoginFormValues) {
-    console.log(data);
-    // Simulate API call
-    toast({
-      title: "Login Submitted",
-      description: "In a real app, this would log you in!",
-    });
-    // router.push('/dashboard'); // Example redirect
+  async function onSubmit(data: LoginFormValues) {
+    await login(data.email, data.password);
   }
 
   return (
@@ -65,7 +59,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input placeholder="you@example.com" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -78,14 +72,15 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-              <LogIn className="mr-2 h-4 w-4" /> Login
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
         </Form>

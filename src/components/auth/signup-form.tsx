@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,8 +18,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRole } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
-import { Handshake, UserPlus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth"; // Import useAuth
+import { Handshake, UserPlus, Loader2 } from "lucide-react"; // Added Loader2
 
 const signupFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -36,7 +35,7 @@ const signupFormSchema = z.object({
 type SignupFormValues = z.infer<typeof signupFormSchema>;
 
 export function SignupForm() {
-  const { toast } = useToast();
+  const { signup, loading } = useAuth(); // Get signup function and loading state
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
     defaultValues: {
@@ -48,14 +47,10 @@ export function SignupForm() {
     },
   });
 
-  function onSubmit(data: SignupFormValues) {
-    console.log(data);
-    // Simulate API call
-    toast({
-      title: "Signup Submitted",
-      description: `Welcome, ${data.name}! You're signing up as a ${data.role}.`,
-    });
-    // router.push('/dashboard'); // Example redirect
+  async function onSubmit(data: SignupFormValues) {
+    await signup(data.email, data.password, data.name);
+    // Role handling (e.g. saving to Firestore) would be an additional step here or in the auth context
+    console.log("Selected role:", data.role); 
   }
 
   return (
@@ -77,7 +72,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder="John Doe" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -90,7 +85,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input placeholder="you@example.com" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -103,7 +98,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -116,7 +111,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,6 +128,7 @@ export function SignupForm() {
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       className="flex flex-col space-y-1"
+                      disabled={loading}
                     >
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
@@ -156,8 +152,9 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-              <UserPlus className="mr-2 h-4 w-4" /> Sign Up
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+              {loading ? "Signing up..." : "Sign Up"}
             </Button>
           </form>
         </Form>

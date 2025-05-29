@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/shared/header";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle, Handshake, MapPin, Star } from "lucide-react";
+import { CheckCircle, MapPin, Star } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -28,7 +28,7 @@ export default function LandingPage() {
                     <Link href="/signup">Get Started</Link>
                   </Button>
                   <Button variant="outline" size="lg" asChild>
-                    <Link href="/dashboard">Find Artisans</Link>
+                    <Link href="/dashboard">Find Artisans</Link> 
                   </Button>
                 </div>
               </div>
