@@ -30,9 +30,7 @@ export default function DashboardPage() {
     if (filters.query) {
       const queryLower = filters.query.toLowerCase();
       workers = workers.filter(worker =>
-        worker.name.toLowerCase().includes(queryLower) ||
-        worker.username.toLowerCase().includes(queryLower) || // Added username search
-        (worker.skills && worker.skills.some(skill => skill.toLowerCase().includes(queryLower)))
+        worker.username.toLowerCase().includes(queryLower)
       );
     }
     setFilteredWorkers(workers);
@@ -143,3 +141,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
