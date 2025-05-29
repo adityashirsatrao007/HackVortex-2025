@@ -1,3 +1,4 @@
+
 export type UserRole = 'customer' | 'worker';
 
 export type ServiceCategory = 'plumber' | 'electrician' | 'mason' | 'carpenter' | 'painter' | 'cleaner';
@@ -60,3 +61,14 @@ export interface Booking {
 }
 
 export type User = Customer | Worker;
+
+export interface NotificationType {
+  id: string;
+  workerId: string;
+  bookingId: string;
+  customerName: string;
+  serviceCategory: ServiceCategory;
+  message: string;
+  timestamp: string; // ISO string
+  read: boolean;
+}

@@ -1,14 +1,19 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, Briefcase, ListChecks, UserCircle, Handshake, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock } from 'lucide-react';
+import { Menu, Briefcase, ListChecks, UserCircle, Handshake, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { useNotification } from '@/contexts/notification-context';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDistanceToNow } from 'date-fns';
+import type { NotificationType } from '@/lib/types';
 
 interface NavLinkProps {
   href: string;
@@ -43,9 +48,32 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
   );
 };
 
+function NotificationItem({ notification, onMarkRead }: { notification: NotificationType, onMarkRead: (id: string) => void }) {
+  return (
+    <div className={cn("p-3 border-b border-border/50", !notification.read && "bg-primary/5")}>
+      <p className="text-sm font-medium">{notification.message}</p>
+      <p className="text-xs text-muted-foreground mb-1">
+        For {notification.serviceCategory} by {notification.customerName}
+      </p>
+      <div className="flex justify-between items-center">
+        <p className="text-xs text-muted-foreground">
+          {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+        </p>
+        {!notification.read && (
+          <Button variant="ghost" size="sm" className="h-auto p-1 text-xs text-primary" onClick={() => onMarkRead(notification.id)}>
+            Mark as read
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 export default function Header() {
-  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
-  const { currentUser, userAppRole, logout, loading } = useAuth(); // Added userAppRole
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { currentUser, userAppRole, logout, loading, isProfileComplete } = useAuth();
+  const { getUnreadNotificationsCount, getNotificationsForWorker, markAsRead, markAllAsRead } = useNotification();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -57,7 +85,7 @@ export default function Header() {
   };
 
   let navItems = [];
-  if (currentUser) {
+  if (currentUser && isProfileComplete) { // Only show full nav if profile is complete
     if (userAppRole === 'worker') {
       navItems = [
         { href: '/dashboard', label: 'My Jobs', icon: <LayoutDashboard className="h-4 w-4 mr-2 md:mr-0" /> },
@@ -71,12 +99,18 @@ export default function Header() {
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ];
     }
+  } else if (currentUser && !isProfileComplete) { // If profile is not complete, only show Profile link
+     navItems = [
+        { href: '/profile', label: 'Complete Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
+     ];
   }
 
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const unreadCount = currentUser && userAppRole === 'worker' ? getUnreadNotificationsCount(currentUser.uid) : 0;
+  const workerNotifications = currentUser && userAppRole === 'worker' ? getNotificationsForWorker(currentUser.uid) : [];
 
-  if (loading && !isAuthPage) { 
+  if (loading && !isAuthPage && pathname !== '/profile') { 
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
@@ -106,7 +140,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href={currentUser ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
+        <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" prefetch={false}>
           <Handshake className="h-8 w-8 text-primary" />
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
@@ -133,6 +167,43 @@ export default function Header() {
             </div>
           )}
 
+          {currentUser && userAppRole === 'worker' && isProfileComplete && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0">
+                <div className="p-3 border-b">
+                  <h4 className="font-medium text-sm">Notifications</h4>
+                </div>
+                <ScrollArea className="h-[300px]">
+                  {workerNotifications.length > 0 ? (
+                    workerNotifications.map(notif => (
+                      <NotificationItem key={notif.id} notification={notif} onMarkRead={markAsRead} />
+                    ))
+                  ) : (
+                    <p className="p-4 text-sm text-muted-foreground text-center">No new notifications.</p>
+                  )}
+                </ScrollArea>
+                 {workerNotifications.length > 0 && unreadCount > 0 && (
+                    <div className="p-2 border-t">
+                        <Button variant="link" size="sm" className="w-full text-primary" onClick={() => markAllAsRead(currentUser.uid)}>
+                            Mark all as read
+                        </Button>
+                    </div>
+                 )}
+              </PopoverContent>
+            </Popover>
+          )}
+
           {currentUser && (
             <Button variant="outline" className="hidden md:inline-flex" onClick={handleLogout} disabled={loading}>
               <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -149,7 +220,7 @@ export default function Header() {
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b mb-2">
-                  <Link href={currentUser ? "/dashboard" : "/"} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
+                  <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
                       <Handshake className="h-7 w-7 text-primary" />
                     <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
@@ -181,7 +252,7 @@ export default function Header() {
                   </div>
                 )}
               </div>
-              <SheetClose onClick={closeSheet} />
+              <SheetClose onClick={closeSheet} /> {/* This should be SheetClose from ui/sheet for proper functionality */}
             </SheetContent>
           </Sheet>
         </div>

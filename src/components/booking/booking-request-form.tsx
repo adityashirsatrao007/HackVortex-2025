@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,9 +22,11 @@ import { CalendarIcon, Clock, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { ServiceCategory, Worker } from "@/lib/types";
-import { SERVICE_CATEGORIES } from "@/lib/constants";
+import type { ServiceCategory, Worker, Booking } from "@/lib/types"; // Added Booking
+import { SERVICE_CATEGORIES, MOCK_BOOKINGS, MOCK_CUSTOMERS } from "@/lib/constants";
 import React from "react";
+import { useAuth } from "@/hooks/use-auth"; // Added useAuth
+import { useNotification } from "@/contexts/notification-context"; // Added useNotification
 
 const bookingFormSchema = z.object({
   serviceCategory: z.enum(SERVICE_CATEGORIES.map(sc => sc.value) as [ServiceCategory, ...ServiceCategory[]], {
@@ -48,10 +51,13 @@ interface BookingRequestFormProps {
 
 export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormProps) {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const { addNotification } = useNotification();
+
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      serviceCategory: worker.skills[0] || undefined, // Pre-select first skill if available
+      serviceCategory: worker.skills[0] || undefined,
       date: undefined,
       time: "",
       location: "",
@@ -60,13 +66,36 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
   });
 
   function onSubmit(data: BookingFormValues) {
-    console.log("Booking Request Data:", { ...data, workerId: worker.id });
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to book." });
+      return;
+    }
+
+    const customerName = currentUser.displayName || MOCK_CUSTOMERS.find(c => c.email === currentUser.email)?.name || "A Customer";
+    
+    // Create a mock booking object
+    const newBooking: Booking = {
+      id: `booking-${Date.now()}`,
+      customerId: currentUser.uid,
+      customerName: customerName,
+      workerId: worker.id,
+      workerName: worker.name,
+      serviceCategory: data.serviceCategory as ServiceCategory,
+      dateTime: new Date(`${format(data.date, "yyyy-MM-dd")}T${data.time}:00`).toISOString(),
+      status: 'pending', // New bookings start as pending
+      locationPreview: data.location,
+      notes: data.notes,
+    };
+
+    MOCK_BOOKINGS.push(newBooking); // Add to mock bookings list
+    addNotification(newBooking); // Add notification for the worker
+
     toast({
       title: "Booking Request Sent!",
       description: `Your request for ${data.serviceCategory} with ${worker.name} on ${format(data.date, "PPP")} at ${data.time} has been sent.`,
     });
     form.reset();
-    onFormSubmit?.();
+    onFormSubmit?.(); // Close dialog or other actions
   }
 
   const timeSlots = Array.from({ length: (18 - 8) * 2 }, (_, i) => {
@@ -96,7 +125,6 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
                       {cat.label}
                     </SelectItem>
                   ))}
-                  {/* Optionally, show all service categories if worker skills are not restrictive */}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -135,7 +163,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                       initialFocus
                     />
                   </PopoverContent>

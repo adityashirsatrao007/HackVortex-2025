@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Header from "@/components/shared/header";
 import { Loader2 } from 'lucide-react';
@@ -12,19 +12,29 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, isProfileComplete } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // If loading is finished and there's no current user, redirect to login.
-    // Don't redirect if already on an auth page (though this layout is for (app) group)
-    if (!loading && !currentUser) {
-       if (pathname !== '/login' && pathname !== '/signup') {
-         router.push('/login');
-       }
+    if (loading) return;
+
+    if (!currentUser) {
+      if (pathname !== '/login' && pathname !== '/signup') {
+        router.push('/login');
+      }
+      return;
     }
-  }, [currentUser, loading, router, pathname]);
+
+    // If user is logged in, but profile is not complete,
+    // and they are not already on the profile page, redirect them.
+    // The `new=true` query param is just indicative, actual check is `isProfileComplete`.
+    if (currentUser && !isProfileComplete && pathname !== '/profile') {
+      router.push('/profile?new=true');
+    }
+
+  }, [currentUser, loading, isProfileComplete, router, pathname]);
 
   if (loading) {
     return (
@@ -34,18 +44,24 @@ export default function AppLayout({
     );
   }
 
-  // This check is technically redundant due to useEffect but good for safety.
-  // If there's no user and loading is done, children shouldn't render.
-  // The redirect should have already happened.
   if (!currentUser) {
-     // This path should ideally not be reached if redirection works.
-     // You might want to show a specific "Redirecting..." message or null.
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
             <p className="ml-4 text-muted-foreground">Redirecting to login...</p>
         </div>
     );
+  }
+  
+  // If profile is not complete and we are not on profile page yet, show loader.
+  // This handles the brief moment before redirection effect kicks in.
+  if (!isProfileComplete && pathname !== '/profile') {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="ml-4 text-muted-foreground">Redirecting to complete profile...</p>
+        </div>
+      );
   }
 
   return (
