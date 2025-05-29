@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Clock, Send, MapPinIcon } from "lucide-react";
+import { CalendarIcon, Clock, Send, MapPinIcon, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ import { SERVICE_CATEGORIES, MOCK_BOOKINGS, MOCK_CUSTOMERS } from "@/lib/constan
 import React from "react";
 import { useAuth } from "@/hooks/use-auth"; 
 import { useNotification } from "@/contexts/notification-context"; 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const bookingFormSchema = z.object({
   serviceCategory: z.enum(SERVICE_CATEGORIES.map(sc => sc.value) as [ServiceCategory, ...ServiceCategory[]], {
@@ -59,11 +60,13 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     defaultValues: {
       serviceCategory: worker.skills[0] || undefined,
       date: undefined,
-      time: "09:00", // Default to a common start time
-      location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "", // Pre-fill if customer address exists
+      time: "09:00", 
+      location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "", 
       notes: "",
     },
   });
+
+  const estimatedPrice = worker.hourlyRate ? worker.hourlyRate * 2 : 0; // Mock estimate for 2 hours
 
   function onSubmit(data: BookingFormValues) {
     if (!currentUser) {
@@ -92,7 +95,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     toast({
       title: "Booking Request Sent!",
       description: `Your request for ${data.serviceCategory} with ${worker.name} on ${format(data.date, "PPP")} at ${data.time} has been sent.`,
-      className: "bg-green-500 text-white",
+      className: "bg-green-500 text-white", // This might be overridden by theme, consider variants
     });
     form.reset({
         serviceCategory: worker.skills[0] || undefined,
@@ -104,7 +107,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     onFormSubmit?.(); 
   }
 
-  const timeSlots = Array.from({ length: (18 - 8) * 2 + 1 }, (_, i) => { // Include 18:00
+  const timeSlots = Array.from({ length: (18 - 8) * 2 + 1 }, (_, i) => {
     const hour = 8 + Math.floor(i / 2);
     const minute = (i % 2) * 30;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -238,8 +241,26 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg text-base py-6">
-          <Send className="mr-2 h-5 w-5" /> Send Booking Request
+
+        {estimatedPrice > 0 && (
+            <Card className="bg-secondary/50 border-primary/20 shadow-sm">
+                <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-primary flex items-center">
+                        <IndianRupee className="mr-1.5 h-4 w-4" /> Estimated Cost
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                    <p className="text-2xl font-bold text-foreground">₹{estimatedPrice.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">(Based on approx. 2 hours of work at worker's rate. Final cost may vary.)</p>
+                </CardContent>
+            </Card>
+        )}
+
+        <Button 
+          type="submit" 
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg text-base py-6 transition-transform active:scale-95"
+        >
+          <Send /> Send Booking Request
         </Button>
       </form>
     </Form>
