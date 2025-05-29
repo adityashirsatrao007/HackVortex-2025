@@ -57,8 +57,8 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     skills: ['mason', 'painter'],
     location: { lat: 13.0000, lng: 77.6500 },
     isVerified: false,
-    // No aadhaarNumber provided for this worker initially
-    aadhaarVerified: false,
+    aadhaarNumber: '345678901234',
+    aadhaarVerified: true,
     selfieWithGpsUrl: 'https://placehold.co/100x100.png',
     rating: 4.2,
     bio: 'Dedicated mason and painter. Committed to quality workmanship.',
@@ -112,36 +112,41 @@ if (typeof window !== 'undefined') {
     const storedWorkers = localStorage.getItem(WORKERS_STORAGE_KEY);
     if (storedWorkers) {
       const parsedWorkers = JSON.parse(storedWorkers);
-      if (Array.isArray(parsedWorkers) && parsedWorkers.length > 0) {
-        MOCK_WORKERS_INSTANCE = parsedWorkers;
+      if (Array.isArray(parsedWorkers)) {
+        MOCK_WORKERS_INSTANCE = parsedWorkers.length > 0 ? parsedWorkers : [...DEFAULT_MOCK_WORKERS];
       } else {
-        // If localStorage has an empty array or invalid data, re-initialize with defaults and save
-        localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
+        console.warn("KarigarKart: Stored workers data is not an array, using defaults.");
+        MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
       }
     } else {
-        // If nothing in localStorage, save defaults
-        localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
+      // If nothing in localStorage, MOCK_WORKERS_INSTANCE already has defaults
     }
+    // Always save back, to ensure format is correct or defaults are stored if it was null/invalid
+    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
   } catch (e) {
-    console.error("Error processing stored workers from localStorage:", e);
-    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE)); // Fallback to defaults
+    console.error("KarigarKart: Error processing/parsing stored workers from localStorage. Using defaults.", e);
+    MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
+    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
   }
 
   try {
     const storedCustomers = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
     if (storedCustomers) {
       const parsedCustomers = JSON.parse(storedCustomers);
-      if (Array.isArray(parsedCustomers) && parsedCustomers.length > 0) {
-        MOCK_CUSTOMERS_INSTANCE = parsedCustomers;
+      if (Array.isArray(parsedCustomers)) {
+        MOCK_CUSTOMERS_INSTANCE = parsedCustomers.length > 0 ? parsedCustomers : [...DEFAULT_MOCK_CUSTOMERS];
       } else {
-        localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
+        console.warn("KarigarKart: Stored customers data is not an array, using defaults.");
+        MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
       }
     } else {
-        localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
+      // If nothing in localStorage, MOCK_CUSTOMERS_INSTANCE already has defaults
     }
+    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
   } catch (e) {
-    console.error("Error processing stored customers from localStorage:", e);
-    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE)); // Fallback to defaults
+    console.error("KarigarKart: Error processing/parsing stored customers from localStorage. Using defaults.", e);
+    MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
+    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
   }
 }
 
@@ -194,27 +199,26 @@ export function loadUserRoleFromLocalStorage(userId: string): UserRole | null {
 
 export function detectUserRoleFromMocks(email: string | null): UserRole | null {
   if (!email) return null;
-  // Ensure MOCK_WORKERS and MOCK_CUSTOMERS are arrays before calling .some
-  if (Array.isArray(MOCK_WORKERS) && MOCK_WORKERS.some(worker => worker.email === email)) {
+  if (MOCK_WORKERS.some(worker => worker.email === email)) {
     return 'worker';
   }
-  if (Array.isArray(MOCK_CUSTOMERS) && MOCK_CUSTOMERS.some(customer => customer.email === email)) {
+  if (MOCK_CUSTOMERS.some(customer => customer.email === email)) {
     return 'customer';
   }
   return null;
 }
 
 export function checkProfileCompletion(
-  user: { email: string | null; uid: string; displayName: string | null }, 
+  user: { email: string | null; uid: string; displayName: string | null },
   role: UserRole | null
 ): boolean {
-  if (!user || !role || !user.email) return false; 
+  if (!user || !role || !user.email) return false;
 
   if (role === 'customer') {
-    const customerProfile = Array.isArray(MOCK_CUSTOMERS) ? MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email) : undefined;
+    const customerProfile = MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email);
     return !!(customerProfile && customerProfile.address && customerProfile.address.trim() !== '');
   } else if (role === 'worker') {
-    const workerProfile = Array.isArray(MOCK_WORKERS) ? MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email) : undefined;
+    const workerProfile = MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email);
     return !!(
       workerProfile &&
       workerProfile.skills && workerProfile.skills.length > 0 &&
@@ -225,20 +229,20 @@ export function checkProfileCompletion(
   return false;
 }
 
-
+// Initialize MOCK_BOOKINGS and MOCK_REVIEWS after MOCK_WORKERS and MOCK_CUSTOMERS are set
 export const MOCK_REVIEWS: Review[] = [
   {
     id: 'review-1',
-    customerId: 'customer-1',
-    customerName: 'Sita Sharma',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
     rating: 5,
     comment: 'Rajesh did an excellent job fixing the leak. Very professional.',
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'review-2',
-    customerId: 'customer-2',
-    customerName: 'Vikram Reddy',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
+    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
     rating: 4,
     comment: 'Good work by Priya on the custom shelf. Took a bit longer than expected but quality is great.',
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -248,9 +252,9 @@ export const MOCK_REVIEWS: Review[] = [
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
     customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
     workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -261,9 +265,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
     customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.id || 'worker-2',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.id || 'worker-2-fallback',
     workerName: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.name || 'Priya Singh',
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -274,9 +278,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
     customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.id || 'worker-3',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.id || 'worker-3-fallback',
     workerName: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.name || 'Amit Patel',
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -286,9 +290,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.id || 'customer-test',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.id || 'customer-test-fallback',
     customerName: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.name || 'Test Customer User',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
     workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -298,9 +302,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-5',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2',
+    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
     customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1',
+    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
     workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -309,4 +313,3 @@ export const MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
-    
