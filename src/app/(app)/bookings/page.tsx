@@ -6,7 +6,7 @@ import { BookingHistoryItem } from '@/components/booking/booking-history-item';
 import type { Booking } from '@/lib/types';
 import { MOCK_BOOKINGS, MOCK_WORKERS, MOCK_CUSTOMERS } from '@/lib/constants';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListChecks, CalendarClock, CalendarCheck2, CalendarX2, Briefcase, ClockHistory } from 'lucide-react';
+import { ListChecks, CalendarClock, CalendarX2, Briefcase, History } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function BookingHistoryPage() {
@@ -95,7 +95,7 @@ export default function BookingHistoryPage() {
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="upcoming"><CalendarClock className="mr-1 h-4 w-4"/>Upcoming</TabsTrigger>
-          <TabsTrigger value="past"><ClockHistory className="mr-1 h-4 w-4"/>Past</TabsTrigger>
+          <TabsTrigger value="past"><History className="mr-1 h-4 w-4"/>Past</TabsTrigger>
           <TabsTrigger value="cancelled"><CalendarX2 className="mr-1 h-4 w-4"/>Cancelled/Rejected</TabsTrigger>
         </TabsList>
         <TabsContent value="all">
