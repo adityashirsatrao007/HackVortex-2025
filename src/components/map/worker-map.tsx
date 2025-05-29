@@ -37,7 +37,7 @@ export function WorkerMap({ workers = MOCK_WORKERS, selectedWorkerId, onWorkerSe
           <Image
             src="https://placehold.co/1200x600.png" // A generic map background
             alt="Map Placeholder"
-            data-ai-hint="city map"
+            data-ai-hint="street map"
             layout="fill"
             objectFit="cover"
             className="opacity-50"
