@@ -41,6 +41,7 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     isVerified: true,
     aadhaarNumber: '234567890123',
     aadhaarVerified: false,
+    selfieWithGpsUrl: 'https://placehold.co/100x100.png', // Added placeholder
     rating: 4.8,
     bio: 'Skilled carpenter specializing in custom furniture and repairs.',
     hourlyRate: 300,
@@ -104,50 +105,51 @@ const CUSTOMERS_STORAGE_KEY = 'karigarKartMockCustomers';
 const USER_ROLE_STORAGE_KEY_PREFIX = 'karigarKartUserRole_';
 
 
-let MOCK_WORKERS_INSTANCE: Worker[] = [...DEFAULT_MOCK_WORKERS];
-let MOCK_CUSTOMERS_INSTANCE: Customer[] = [...DEFAULT_MOCK_CUSTOMERS];
+let MOCK_WORKERS_INSTANCE: Worker[] = [];
+let MOCK_CUSTOMERS_INSTANCE: Customer[] = [];
 
 if (typeof window !== 'undefined') {
   try {
     const storedWorkers = localStorage.getItem(WORKERS_STORAGE_KEY);
-    if (storedWorkers) {
-      const parsedWorkers = JSON.parse(storedWorkers);
-      if (Array.isArray(parsedWorkers)) {
-        MOCK_WORKERS_INSTANCE = parsedWorkers.length > 0 ? parsedWorkers : [...DEFAULT_MOCK_WORKERS];
-      } else {
-        console.warn("KarigarKart: Stored workers data is not an array, using defaults.");
-        MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
-      }
+    const parsedWorkers = storedWorkers ? JSON.parse(storedWorkers) : null;
+    if (Array.isArray(parsedWorkers) && parsedWorkers.length > 0) {
+      MOCK_WORKERS_INSTANCE = parsedWorkers;
     } else {
-      // If nothing in localStorage, MOCK_WORKERS_INSTANCE already has defaults
+      MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
+      localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
     }
-    // Always save back, to ensure format is correct or defaults are stored if it was null/invalid
-    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
   } catch (e) {
-    console.error("KarigarKart: Error processing/parsing stored workers from localStorage. Using defaults.", e);
+    console.warn("KarigarKart: Error processing/parsing stored workers from localStorage. Using defaults and re-saving.", e);
     MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
-    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
+    try {
+      localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(MOCK_WORKERS_INSTANCE));
+    } catch (saveError) {
+      console.error("KarigarKart: Error re-saving default workers to localStorage:", saveError);
+    }
   }
 
   try {
     const storedCustomers = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
-    if (storedCustomers) {
-      const parsedCustomers = JSON.parse(storedCustomers);
-      if (Array.isArray(parsedCustomers)) {
-        MOCK_CUSTOMERS_INSTANCE = parsedCustomers.length > 0 ? parsedCustomers : [...DEFAULT_MOCK_CUSTOMERS];
-      } else {
-        console.warn("KarigarKart: Stored customers data is not an array, using defaults.");
-        MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
-      }
+    const parsedCustomers = storedCustomers ? JSON.parse(storedCustomers) : null;
+    if (Array.isArray(parsedCustomers) && parsedCustomers.length > 0) {
+      MOCK_CUSTOMERS_INSTANCE = parsedCustomers;
     } else {
-      // If nothing in localStorage, MOCK_CUSTOMERS_INSTANCE already has defaults
+      MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
+      localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
     }
-    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
   } catch (e) {
-    console.error("KarigarKart: Error processing/parsing stored customers from localStorage. Using defaults.", e);
+    console.warn("KarigarKart: Error processing/parsing stored customers from localStorage. Using defaults and re-saving.", e);
     MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
-    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
+     try {
+      localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(MOCK_CUSTOMERS_INSTANCE));
+    } catch (saveError) {
+      console.error("KarigarKart: Error re-saving default customers to localStorage:", saveError);
+    }
   }
+} else {
+  // Fallback for non-browser environments if needed, though most of the app is client-side.
+  MOCK_WORKERS_INSTANCE = [...DEFAULT_MOCK_WORKERS];
+  MOCK_CUSTOMERS_INSTANCE = [...DEFAULT_MOCK_CUSTOMERS];
 }
 
 export const MOCK_WORKERS: Worker[] = MOCK_WORKERS_INSTANCE;
@@ -229,20 +231,38 @@ export function checkProfileCompletion(
   return false;
 }
 
-// Initialize MOCK_BOOKINGS and MOCK_REVIEWS after MOCK_WORKERS and MOCK_CUSTOMERS are set
+// Initialize MOCK_REVIEWS and MOCK_BOOKINGS after MOCK_WORKERS and MOCK_CUSTOMERS are set
+const safeGetWorkerId = (email: string, fallbackId: string) => {
+  const worker = MOCK_WORKERS_INSTANCE.find(w => w.email === email);
+  return worker ? worker.id : fallbackId;
+};
+const safeGetWorkerName = (email: string, fallbackName: string) => {
+  const worker = MOCK_WORKERS_INSTANCE.find(w => w.email === email);
+  return worker ? worker.name : fallbackName;
+}
+const safeGetCustomerId = (email: string, fallbackId: string) => {
+  const customer = MOCK_CUSTOMERS_INSTANCE.find(c => c.email === email);
+  return customer ? customer.id : fallbackId;
+};
+const safeGetCustomerName = (email: string, fallbackName: string) => {
+  const customer = MOCK_CUSTOMERS_INSTANCE.find(c => c.email === email);
+  return customer ? customer.name : fallbackName;
+};
+
+
 export const MOCK_REVIEWS: Review[] = [
   {
     id: 'review-1',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
+    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1-fallback'),
+    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
     rating: 5,
     comment: 'Rajesh did an excellent job fixing the leak. Very professional.',
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'review-2',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
+    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2-fallback'),
+    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
     rating: 4,
     comment: 'Good work by Priya on the custom shelf. Took a bit longer than expected but quality is great.',
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -252,10 +272,10 @@ export const MOCK_REVIEWS: Review[] = [
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
-    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1-fallback'),
+    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -265,10 +285,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.id || 'worker-2-fallback',
-    workerName: MOCK_WORKERS.find(w=>w.email === 'priya.worker@example.com')?.name || 'Priya Singh',
+    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2-fallback'),
+    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
+    workerId: safeGetWorkerId('priya.worker@example.com', 'worker-2-fallback'),
+    workerName: safeGetWorkerName('priya.worker@example.com', 'Priya Singh'),
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -278,10 +298,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.id || 'customer-1-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'sita.customer@example.com')?.name || 'Sita Sharma',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.id || 'worker-3-fallback',
-    workerName: MOCK_WORKERS.find(w=>w.email === 'amit.worker@example.com')?.name || 'Amit Patel',
+    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1-fallback'),
+    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
+    workerId: safeGetWorkerId('amit.worker@example.com', 'worker-3-fallback'),
+    workerName: safeGetWorkerName('amit.worker@example.com', 'Amit Patel'),
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',
@@ -290,10 +310,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.id || 'customer-test-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'customer@example.com')?.name || 'Test Customer User',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
-    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: safeGetCustomerId('customer@example.com', 'customer-test-fallback'),
+    customerName: safeGetCustomerName('customer@example.com', 'Test Customer User'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'pending',
@@ -302,10 +322,10 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-5',
-    customerId: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.id || 'customer-2-fallback',
-    customerName: MOCK_CUSTOMERS.find(c=>c.email === 'vikram.customer@example.com')?.name || 'Vikram Reddy',
-    workerId: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.id || 'worker-1-fallback',
-    workerName: MOCK_WORKERS.find(w=>w.email === 'rajesh.worker@example.com')?.name || 'Rajesh Kumar',
+    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2-fallback'),
+    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',
@@ -313,3 +333,6 @@ export const MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
+
+
+    
