@@ -54,7 +54,7 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
   const isNegative = notification.message.toLowerCase().includes("rejected") || notification.message.toLowerCase().includes("cancelled");
 
   let Icon = Info;
-  let iconColor = "text-blue-500";
+  let iconColor = "text-blue-500"; // Default for general info
   if (isPositive) { Icon = CheckCircle; iconColor = "text-green-500"; }
   if (isNegative) { Icon = XCircle; iconColor = "text-red-500"; }
 
@@ -64,12 +64,14 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
       <div className="flex items-start gap-3">
         <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${iconColor}`} />
         <div className="flex-1">
-            <p className={cn("text-sm", !notification.read && "font-semibold text-foreground")}>{notification.message}</p>
-            {(notification.customerName || notification.workerName) && (
-                <p className="text-xs text-muted-foreground mb-1">
+            <p className={cn("text-sm leading-relaxed", !notification.read && "font-semibold text-foreground")}>{notification.message}</p>
+            {(notification.customerName || notification.workerName || notification.serviceCategory) && (
+                <p className="text-xs text-muted-foreground mt-0.5">
                     {notification.recipientRole === 'worker' && notification.customerName ? `From: ${notification.customerName}` : ''}
                     {notification.recipientRole === 'customer' && notification.workerName ? `By: ${notification.workerName}` : ''}
-                    {notification.serviceCategory ? ` for ${notification.serviceCategory}` : ''}
+                    {notification.recipientRole === 'worker' && notification.customerName && notification.serviceCategory ? ' for ' : ''}
+                    {notification.recipientRole === 'customer' && notification.workerName && notification.serviceCategory ? ' for ' : ''}
+                    {notification.serviceCategory ? `${notification.serviceCategory}` : ''}
                 </p>
             )}
         </div>
@@ -184,7 +186,7 @@ export default function Header() {
             </div>
           )}
 
-          {currentUser && isProfileComplete && ( // Show bell for any logged-in, profile-complete user
+          {currentUser && isProfileComplete && ( 
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative rounded-full">

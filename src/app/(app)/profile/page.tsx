@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage, saveUserRoleToLocalStorage } from "@/lib/constants";
 import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint } from "lucide-react";
+import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint, Users } from "lucide-react"; // Added Users
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -220,7 +220,7 @@ export default function ProfilePage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-muted-foreground">Loading profile data...</p>
       </div>
@@ -254,7 +254,7 @@ export default function ProfilePage() {
         </Alert>
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle>Select Your Role</CardTitle>
+            <CardTitle className="flex items-center"><Users className="mr-2 h-6 w-6 text-primary" />Select Your Role</CardTitle>
             <CardDescription>Are you looking for services or offering them?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -278,7 +278,7 @@ export default function ProfilePage() {
           <CardFooter>
             <Button onClick={handleConfirmRole} disabled={!selectedRoleForUi || isSaving} className="w-full">
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Role & Continue
+              {isSaving ? "Setting Role..." : "Confirm Role & Continue"}
             </Button>
           </CardFooter>
         </Card>
@@ -295,7 +295,7 @@ export default function ProfilePage() {
           <Info className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary font-semibold">Complete Your Profile!</AlertTitle>
           <AlertDescription>
-            Welcome, {userAppRole === 'worker' ? 'Artisan/Worker' : 'Customer'}! Please fill in the details below and click "Save Changes" to get started.
+            Welcome, {userAppRole === 'worker' ? 'Artisan/Worker' : 'Customer'}! Please fill in the details below and click "Save Changes" to get started. Fields marked with <span className="text-destructive">*</span> are required.
           </AlertDescription>
         </Alert>
       )}
@@ -337,7 +337,7 @@ export default function ProfilePage() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" disabled={isSaving}/>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="username_profile">Username <span className="text-destructive">*</span></Label>
+                <Label htmlFor="username_profile">Username {(!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad) && <span className="text-destructive">*</span>}</Label>
                 <Input
                     id="username_profile"
                     value={username}
@@ -436,5 +436,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

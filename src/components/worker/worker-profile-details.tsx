@@ -11,6 +11,7 @@ import type { Worker, Review as ReviewType } from '@/lib/types';
 import { BookingRequestForm } from '@/components/booking/booking-request-form';
 import { MOCK_REVIEWS } from '@/lib/constants'; 
 import { formatDistanceToNow } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function ReviewCard({ review }: { review: ReviewType }) {
   return (

@@ -79,7 +79,7 @@ export default function BookingHistoryPage() {
             {icon || <Sparkles className="h-12 w-12 text-muted-foreground/50 mb-4" />}
             <p className="text-muted-foreground">{emptyMessage}</p>
             {userAppRole === 'customer' && (
-                <Button asChild variant="link" className="mt-2 text-primary">
+                <Button asChild variant="default" className="mt-4 bg-accent hover:bg-accent/90 text-accent-foreground shadow hover:shadow-md">
                     <Link href="/dashboard">Find a Worker</Link>
                 </Button>
             )}

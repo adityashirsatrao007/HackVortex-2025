@@ -5,12 +5,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { WorkerMap } from '@/components/map/worker-map';
 import { MapFilter } from '@/components/map/map-filter';
 import type { Worker, ServiceCategory, Booking } from '@/lib/types';
-import { MOCK_WORKERS, MOCK_BOOKINGS } from '@/lib/constants'; // Added MOCK_BOOKINGS
+import { MOCK_WORKERS, MOCK_BOOKINGS } from '@/lib/constants'; 
 import { WorkerCard } from '@/components/worker/worker-card';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock, Users, AlertCircle } from 'lucide-react'; // Added Users, AlertCircle
+import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock, Users, AlertCircle } from 'lucide-react'; 
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
@@ -38,7 +38,7 @@ export default function DashboardPage() {
     if (userAppRole === 'worker') {
       fetchWorkerJobCounts();
     }
-  }, [currentUser, userAppRole, fetchWorkerJobCounts]); // fetchWorkerJobCounts added as dependency
+  }, [currentUser, userAppRole, fetchWorkerJobCounts]); 
 
   // Periodically refresh job counts for worker dashboard to simulate real-time updates
   useEffect(() => {
@@ -166,7 +166,7 @@ export default function DashboardPage() {
                       />
                   ))
               ) : (
-                  <Card className="border-dashed">
+                  <Card className="border-dashed border-muted-foreground/30">
                     <CardContent className="py-10 flex flex-col items-center justify-center text-center">
                         <AlertCircle className="h-10 w-10 text-muted-foreground/70 mb-3" />
                         <p className="text-muted-foreground">No workers found matching your criteria.</p>
