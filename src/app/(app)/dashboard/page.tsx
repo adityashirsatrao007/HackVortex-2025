@@ -14,16 +14,17 @@ import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
-  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([]); // Initialize as empty
+  // Initialize filteredWorkers directly with MOCK_WORKERS
+  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([...MOCK_WORKERS]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    // This effect runs on mount and whenever currentUser changes.
-    // It ensures filteredWorkers is populated from the MOCK_WORKERS array,
-    // which should include all signed-up users whose data has been saved.
+    // This effect ensures filteredWorkers is re-populated if MOCK_WORKERS changes
+    // or if currentUser changes (e.g., re-login).
+    // For the initial load, useState already handles it.
     setFilteredWorkers([...MOCK_WORKERS]);
     setSelectedWorkerId(undefined);
-  }, [currentUser]); 
+  }, [currentUser]);
 
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
     let workersToFilter = [...MOCK_WORKERS]; // Start with the full, current list from constants
@@ -37,7 +38,7 @@ export default function DashboardPage() {
       );
     }
     setFilteredWorkers(workersToFilter);
-    setSelectedWorkerId(undefined); 
+    setSelectedWorkerId(undefined);
   };
 
   const handleWorkerSelectOnMap = (workerId: string) => {
