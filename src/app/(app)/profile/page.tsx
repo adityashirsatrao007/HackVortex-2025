@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage } from "@/lib/constants";
+import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage, saveUserRoleToLocalStorage } from "@/lib/constants";
 import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
 import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info, Loader2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const {
@@ -64,13 +65,13 @@ export default function ProfilePage() {
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
       
       const defaultUsername = currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`;
-      setUsername(defaultUsername); // Set a default username initially
+      setUsername(defaultUsername); 
 
       if (userAppRole) {
         setSelectedRoleForUi(userAppRole);
         let userProfile;
         if (userAppRole === 'worker') {
-          userProfile = MOCK_WORKERS.find(w => w.id === currentUser.uid);
+          userProfile = MOCK_WORKERS.find(w => w.id === currentUser.uid || w.email === currentUser.email);
           if (userProfile) {
             setUsername(userProfile.username || defaultUsername);
             setSkillsInput(userProfile.skills?.join(', ') || '');
@@ -80,7 +81,6 @@ export default function ProfilePage() {
             setAadhaarNumberInput(userProfile.aadhaarNumber || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           } else {
-            // New worker profile or profile not found in mock, ensure fields are clear
             setSkillsInput('');
             setHourlyRateInput('');
             setBio('');
@@ -88,20 +88,17 @@ export default function ProfilePage() {
             setAadhaarNumberInput('');
           }
         } else if (userAppRole === 'customer') {
-          userProfile = MOCK_CUSTOMERS.find(c => c.id === currentUser.uid);
+          userProfile = MOCK_CUSTOMERS.find(c => c.id === currentUser.uid || c.email === currentUser.email);
           if (userProfile) {
             setUsername(userProfile.username || defaultUsername);
             setAddress(userProfile.address || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           } else {
-            // New customer profile or profile not found in mock
             setAddress('');
           }
         }
       } else {
-         // Role not selected yet
          setSelectedRoleForUi(null);
-         // Clear role-specific fields
          setAddress('');
          setSkillsInput('');
          setHourlyRateInput('');
@@ -129,12 +126,8 @@ export default function ProfilePage() {
       return;
     }
     setIsSaving(true);
-    await selectUserRoleAndInitializeProfile(selectedRoleForUi, username); // Pass username
-    // After role selection, userAppRole in context updates, which should trigger the main useEffect
-    // to load/clear appropriate fields. We don't need to manually clear here.
+    await selectUserRoleAndInitializeProfile(selectedRoleForUi, username); 
     setIsSaving(false);
-    // No automatic redirect here; user needs to fill details and save.
-    // The page will re-render to show appropriate fields.
   };
 
   const handleSaveChanges = async () => {
@@ -145,33 +138,33 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     let profileDataIsValid = true;
-    // This validation now primarily applies when completing an initially incomplete profile.
-    if (!authContextIsProfileComplete || isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole)) {
-      if (!username.trim() || username.length < 3) {
-        toast({ variant: "destructive", title: "Missing Information", description: "Username must be at least 3 characters." });
+    
+    if (!username.trim() || username.length < 3) {
+      toast({ variant: "destructive", title: "Missing Information", description: "Username must be at least 3 characters." });
+      profileDataIsValid = false;
+    }
+
+    if (userAppRole === 'customer') {
+      if (!address.trim()) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
         profileDataIsValid = false;
       }
-      if (userAppRole === 'customer') {
-        if (!address.trim()) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your address." });
-          profileDataIsValid = false;
-        }
-      } else if (userAppRole === 'worker') {
-        const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
-        if (parsedSkills.length === 0) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill (e.g., plumber, electrician)." });
-          profileDataIsValid = false;
-        }
-        if (!bio.trim()) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
-          profileDataIsValid = false;
-        }
-        if (!address.trim()) {
-          toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
-          profileDataIsValid = false;
-        }
+    } else if (userAppRole === 'worker') {
+      const parsedSkills = skillsInput.split(',').map(s => s.trim().toLowerCase() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
+      if (parsedSkills.length === 0) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please enter at least one valid skill (e.g., plumber, electrician)." });
+        profileDataIsValid = false;
+      }
+      if (!bio.trim()) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please provide a bio." });
+        profileDataIsValid = false;
+      }
+      if (!address.trim()) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please provide your primary location/area (e.g., Whitefield, Bangalore)." });
+        profileDataIsValid = false;
       }
     }
+    
 
     if (!profileDataIsValid) {
         setIsSaving(false);
@@ -191,38 +184,27 @@ export default function ProfilePage() {
     }
 
     if (userAppRole === 'worker') {
-      const workerIdx = MOCK_WORKERS.findIndex(w => w.id === currentUser.uid);
-      const parsedSkills = skillsInput.split(',').map(s => s.trim() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
+      const workerIdx = MOCK_WORKERS.findIndex(w => w.id === currentUser.uid || w.email === currentUser.email);
+      const parsedSkills = skillsInput.split(',').map(s => s.trim().toLowerCase() as ServiceCategory).filter(s => SERVICE_CATEGORIES.some(sc => sc.value === s));
       const workerDataUpdate: Partial<Worker> = {
         name, username, skills: parsedSkills,
         hourlyRate: parseFloat(hourlyRateInput as string) || undefined,
-        bio, avatarUrl, address, email: email || currentUser.email || '', // Ensure email is there
+        bio, avatarUrl, address, email: email || currentUser.email || '', 
         aadhaarNumber: aadhaarNumberInput,
       };
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
       } else {
-         // This case should ideally be handled by selectUserRoleAndInitializeProfile
-        console.warn("Worker profile not found in MOCK_WORKERS during save, should have been initialized.");
-        // Fallback to push, though it implies an issue in initialization flow
-        MOCK_WORKERS.push({
-            id: currentUser.uid,
-            location: { lat: 0, lng: 0 },
-            isVerified: false, rating: 0, aadhaarVerified: false,
-            ...workerDataUpdate,
-            role: 'worker'
-        } as Worker);
+        console.error("KarigarKart: Worker profile not found in MOCK_WORKERS during save. This should not happen if role selection initialized it.");
       }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
-      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid);
+      const customerIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid || c.email === currentUser.email);
       const customerDataUpdate: Partial<Customer> = { name, username, address, avatarUrl, email: email || currentUser.email || '' };
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate, role: 'customer' };
       } else {
-        // This case should ideally be handled by selectUserRoleAndInitializeProfile
-        console.warn("Customer profile not found in MOCK_CUSTOMERS during save, should have been initialized.");
-        MOCK_CUSTOMERS.push({ id: currentUser.uid, ...customerDataUpdate, role: 'customer' } as Customer);
+         console.error("KarigarKart: Customer profile not found in MOCK_CUSTOMERS during save. This should not happen if role selection initialized it.");
       }
       saveCustomersToLocalStorage();
     }
@@ -234,7 +216,6 @@ export default function ProfilePage() {
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
-    // Redirect logic is now handled by the useEffect listening to authContextIsProfileComplete
   };
 
   if (authLoading) {
@@ -247,7 +228,6 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-     // This case should ideally be handled by AppLayout redirecting to login
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
             <UserCircle className="h-16 w-16 text-muted-foreground mb-4" />
@@ -261,7 +241,7 @@ export default function ProfilePage() {
   }
 
 
-  if (!userAppRole) { // Equivalent to needsRoleSelectionAtPageLoad being effectively true for UI display
+  if (!userAppRole) { 
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
@@ -306,7 +286,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Role is selected, show full profile form
   const showIncompleteProfileAlert = isNewUserCompletionFlowAtPageLoad || (needsRoleSelectionAtPageLoad && userAppRole && !authContextIsProfileComplete);
 
   return (
@@ -332,7 +311,7 @@ export default function ProfilePage() {
 
       <Card className="shadow-xl">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center gap-4 p-6">
-          <Avatar className="h-24 w-24 border-4 border-primary/70 shadow-md">
+          <Avatar className="h-24 w-24 aspect-square border-4 border-primary/70 shadow-md">
             <AvatarImage src={avatarUrl} alt={name} data-ai-hint="person avatar"/>
             <AvatarFallback>{name ? name.substring(0, 2).toUpperCase() : 'KK'}</AvatarFallback>
           </Avatar>
@@ -421,9 +400,9 @@ export default function ProfilePage() {
                         />
                     </div>
                     <div className="flex items-center space-x-2 pt-2 md:pt-7">
-                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified || false} disabled />
+                        <Switch id="aadhaarVerified" checked={(MOCK_WORKERS.find(w=>w.id === currentUser?.uid || w.email === currentUser?.email))?.aadhaarVerified || false} disabled />
                         <Label htmlFor="aadhaarVerified" className="flex items-center">
-                            {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid))?.aadhaarVerified ?
+                            {(MOCK_WORKERS.find(w=>w.id === currentUser?.uid || w.email === currentUser?.email))?.aadhaarVerified ?
                                 <BadgeCheck className="mr-1.5 h-4 w-4 text-green-600"/> :
                                 <ShieldAlert className="mr-1.5 h-4 w-4 text-yellow-500"/>
                             }
@@ -457,3 +436,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
