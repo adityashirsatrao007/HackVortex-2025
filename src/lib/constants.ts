@@ -104,26 +104,32 @@ export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
 const WORKERS_STORAGE_KEY = 'karigarKartMockWorkers';
 const CUSTOMERS_STORAGE_KEY = 'karigarKartMockCustomers';
 const USER_ROLE_STORAGE_KEY_PREFIX = 'karigarKartUserRole_';
-const BOOKINGS_STORAGE_KEY = 'karigarKartMockBookings'; // New key for bookings
+const BOOKINGS_STORAGE_KEY = 'karigarKartMockBookings';
 
 
 // Basic type guard functions
 const isValidWorkerArray = (arr: any): arr is Worker[] => Array.isArray(arr) && arr.every(item =>
   typeof item === 'object' && item !== null &&
-  'id' in item && 'role' in item && item.role === 'worker' &&
-  'name' in item && 'username' in item && 'email' in item &&
-  Array.isArray(item.skills) &&
-  typeof item.location === 'object' && item.location !== null && 'lat' in item.location && 'lng' in item.location &&
-  typeof item.isVerified === 'boolean' &&
-  typeof item.rating === 'number' &&
-  typeof item.address === 'string'
+  'id' in item && typeof item.id === 'string' &&
+  'role' in item && item.role === 'worker' &&
+  'name' in item && typeof item.name === 'string' &&
+  'username' in item && typeof item.username === 'string' &&
+  'email' in item && typeof item.email === 'string' &&
+  'skills' in item && Array.isArray(item.skills) &&
+  'location' in item && typeof item.location === 'object' && item.location !== null && 'lat' in item.location && 'lng' in item.location &&
+  'isVerified' in item && typeof item.isVerified === 'boolean' &&
+  'rating' in item && typeof item.rating === 'number' &&
+  'address' in item && typeof item.address === 'string'
 );
 
 const isValidCustomerArray = (arr: any): arr is Customer[] => Array.isArray(arr) && arr.every(item =>
   typeof item === 'object' && item !== null &&
-  'id' in item && 'role' in item && item.role === 'customer' &&
-  'name' in item && 'username' in item && 'email' in item &&
-  typeof item.address === 'string'
+  'id' in item && typeof item.id === 'string' &&
+  'role' in item && item.role === 'customer' &&
+  'name' in item && typeof item.name === 'string' &&
+  'username' in item && typeof item.username === 'string' &&
+  'email' in item && typeof item.email === 'string' &&
+  'address' in item && typeof item.address === 'string'
 );
 
 const isValidBookingArray = (arr: any): arr is Booking[] => Array.isArray(arr) && arr.every(item =>
@@ -134,24 +140,28 @@ const isValidBookingArray = (arr: any): arr is Booking[] => Array.isArray(arr) &
 
 // Function to safely load and initialize data from localStorage
 function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (data: any) => data is T[]): T[] {
-  let instance: T[] = JSON.parse(JSON.stringify(defaultData));
+  let instance: T[] = JSON.parse(JSON.stringify(defaultData)); // Start with a deep copy of defaults
 
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
+        // Validate if the parsed data is an array and, if a validator is provided, it passes
         if (Array.isArray(parsed) && (!validator || validator(parsed))) {
           instance = parsed;
         } else {
           console.warn(`KarigarKart: Data in localStorage for ${key} is invalid or malformed. Using defaults and re-saving.`);
+          // If data is invalid, stick with defaultData and save it back to localStorage
           localStorage.setItem(key, JSON.stringify(instance));
         }
       } else {
+        // If no data is stored, save the defaultData to localStorage
         localStorage.setItem(key, JSON.stringify(instance));
       }
     } catch (e) {
       console.warn(`KarigarKart: Error processing localStorage for ${key}. Using defaults and re-saving.`, e);
+      // Reset instance to defaultData on error and attempt to save it
       instance = JSON.parse(JSON.stringify(defaultData));
       try {
         localStorage.setItem(key, JSON.stringify(instance));
@@ -163,8 +173,31 @@ function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (data: 
   return instance;
 }
 
-export const MOCK_WORKERS: Worker[] = loadAndInitialize<Worker>(WORKERS_STORAGE_KEY, DEFAULT_MOCK_WORKERS, isValidWorkerArray);
-export const MOCK_CUSTOMERS: Customer[] = loadAndInitialize<Customer>(CUSTOMERS_STORAGE_KEY, DEFAULT_MOCK_CUSTOMERS, isValidCustomerArray);
+// These are now 'let' so they can be reassigned by refresh functions
+export let MOCK_WORKERS: Worker[] = loadAndInitialize<Worker>(WORKERS_STORAGE_KEY, DEFAULT_MOCK_WORKERS, isValidWorkerArray);
+export let MOCK_CUSTOMERS: Customer[] = loadAndInitialize<Customer>(CUSTOMERS_STORAGE_KEY, DEFAULT_MOCK_CUSTOMERS, isValidCustomerArray);
+export let MOCK_BOOKINGS: Booking[] = loadAndInitialize<Booking>(BOOKINGS_STORAGE_KEY, [], isValidBookingArray); // Default to empty array for bookings initially
+
+
+// Functions to refresh the in-memory arrays from localStorage
+export function refreshMockWorkersFromLocalStorage() {
+  MOCK_WORKERS = loadAndInitialize<Worker>(WORKERS_STORAGE_KEY, DEFAULT_MOCK_WORKERS, isValidWorkerArray);
+}
+export function refreshMockCustomersFromLocalStorage() {
+  MOCK_CUSTOMERS = loadAndInitialize<Customer>(CUSTOMERS_STORAGE_KEY, DEFAULT_MOCK_CUSTOMERS, isValidCustomerArray);
+}
+export function refreshMockBookingsFromLocalStorage() {
+  // Initialize with an empty array if nothing is in localStorage, or use DEFAULT_MOCK_BOOKINGS if you have them
+  const defaultBookings = DEFAULT_MOCK_BOOKINGS.length > 0 ? DEFAULT_MOCK_BOOKINGS : [];
+  MOCK_BOOKINGS = loadAndInitialize<Booking>(BOOKINGS_STORAGE_KEY, defaultBookings, isValidBookingArray);
+}
+
+export function refreshAllMockData() {
+  console.log("KarigarKart: Refreshing all mock data from localStorage...");
+  refreshMockWorkersFromLocalStorage();
+  refreshMockCustomersFromLocalStorage();
+  refreshMockBookingsFromLocalStorage();
+}
 
 
 export function saveWorkersToLocalStorage() {
@@ -186,6 +219,17 @@ export function saveCustomersToLocalStorage() {
     }
   }
 }
+
+export function saveBookingsToLocalStorage() {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(MOCK_BOOKINGS));
+    } catch (e) {
+      console.error("Error saving bookings to localStorage:", e);
+    }
+  }
+}
+
 
 export function saveUserRoleToLocalStorage(userId: string, role: UserRole) {
   if (typeof window !== 'undefined') {
@@ -212,10 +256,11 @@ export function loadUserRoleFromLocalStorage(userId: string): UserRole | null {
 
 export function detectUserRoleFromMocks(email: string | null): UserRole | null {
   if (!email) return null;
-  if (MOCK_WORKERS.some(worker => worker.email === email)) {
+  // Ensure MOCK_WORKERS and MOCK_CUSTOMERS are arrays before using .some()
+  if (Array.isArray(MOCK_WORKERS) && MOCK_WORKERS.some(worker => worker.email === email)) {
     return 'worker';
   }
-  if (MOCK_CUSTOMERS.some(customer => customer.email === email)) {
+  if (Array.isArray(MOCK_CUSTOMERS) && MOCK_CUSTOMERS.some(customer => customer.email === email)) {
     return 'customer';
   }
   return null;
@@ -230,10 +275,12 @@ export function checkProfileCompletion(
   }
 
   if (role === 'customer') {
-    const customerProfile = MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email);
+    // Ensure MOCK_CUSTOMERS is an array
+    const customerProfile = Array.isArray(MOCK_CUSTOMERS) ? MOCK_CUSTOMERS.find(c => c.id === user.uid || c.email === user.email) : undefined;
     return !!(customerProfile && customerProfile.username && customerProfile.username.trim() !== '' && customerProfile.address && customerProfile.address.trim() !== '');
   } else if (role === 'worker') {
-    const workerProfile = MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email);
+    // Ensure MOCK_WORKERS is an array
+    const workerProfile = Array.isArray(MOCK_WORKERS) ? MOCK_WORKERS.find(w => w.id === user.uid || w.email === user.email) : undefined;
     return !!(
       workerProfile &&
       workerProfile.username && workerProfile.username.trim() !== '' &&
@@ -244,6 +291,7 @@ export function checkProfileCompletion(
   }
   return false;
 }
+
 
 const safeGetWorkerById = (id: string, fallbackId: string): string => {
   const worker = MOCK_WORKERS.find(w => w.id === id) || DEFAULT_MOCK_WORKERS.find(w => w.id === id);
@@ -268,16 +316,16 @@ const safeGetCustomerName = (email: string | null, fallbackName: string): string
 export const MOCK_REVIEWS: Review[] = [
   {
     id: 'review-1',
-    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1'),
-    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
+    customerId: 'customer-1', // Assuming customer-1 is a stable default
+    customerName: 'Sita Sharma',
     rating: 5,
     comment: 'Rajesh did an excellent job fixing the leak. Very professional.',
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'review-2',
-    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2'),
-    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
+    customerId: 'customer-2', // Assuming customer-2 is a stable default
+    customerName: 'Vikram Reddy',
     rating: 4,
     comment: 'Good work by Priya on the custom shelf. Took a bit longer than expected but quality is great.',
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -287,10 +335,10 @@ export const MOCK_REVIEWS: Review[] = [
 const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1'),
-    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
-    workerId: safeGetWorkerById('worker-1', 'worker-1'),
-    workerName: safeGetWorkerNameById('worker-1', 'Rajesh Kumar'),
+    customerId: 'customer-1',
+    customerName: 'Sita Sharma',
+    workerId: 'worker-1',
+    workerName: 'Rajesh Kumar',
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -300,10 +348,10 @@ const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2'),
-    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
-    workerId: safeGetWorkerById('worker-2', 'worker-2'),
-    workerName: safeGetWorkerNameById('worker-2', 'Priya Singh'),
+    customerId: 'customer-2',
+    customerName: 'Vikram Reddy',
+    workerId: 'worker-2',
+    workerName: 'Priya Singh',
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'completed',
@@ -313,10 +361,10 @@ const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1'),
-    customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
-    workerId: safeGetWorkerById('worker-3', 'worker-3'),
-    workerName: safeGetWorkerNameById('worker-3', 'Amit Patel'),
+    customerId: 'customer-1',
+    customerName: 'Sita Sharma',
+    workerId: 'worker-3',
+    workerName: 'Amit Patel',
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',
@@ -325,10 +373,10 @@ const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: safeGetCustomerId('customer@example.com', 'customer-test'),
-    customerName: safeGetCustomerName('customer@example.com', 'Test Customer User'),
-    workerId: safeGetWorkerById('worker-1', 'worker-1'),
-    workerName: safeGetWorkerNameById('worker-1', 'Rajesh Kumar'),
+    customerId: 'customer-test', // Uses default test customer
+    customerName: 'Test Customer User',
+    workerId: 'worker-1',
+    workerName: 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'pending',
@@ -337,10 +385,10 @@ const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-5',
-    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2'),
-    customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
-    workerId: safeGetWorkerById('worker-1', 'worker-1'),
-    workerName: safeGetWorkerNameById('worker-1', 'Rajesh Kumar'),
+    customerId: 'customer-2',
+    customerName: 'Vikram Reddy',
+    workerId: 'worker-1',
+    workerName: 'Rajesh Kumar',
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'accepted',
@@ -348,15 +396,11 @@ const DEFAULT_MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
-
-export const MOCK_BOOKINGS: Booking[] = loadAndInitialize<Booking>(BOOKINGS_STORAGE_KEY, DEFAULT_MOCK_BOOKINGS, isValidBookingArray);
-
-export function saveBookingsToLocalStorage() {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(MOCK_BOOKINGS));
-    } catch (e) {
-      console.error("Error saving bookings to localStorage:", e);
-    }
-  }
+// Initialize MOCK_BOOKINGS after MOCK_WORKERS and MOCK_CUSTOMERS might have been populated from localStorage
+// This ensures DEFAULT_MOCK_BOOKINGS can correctly reference dynamic worker/customer names if needed,
+// though the current DEFAULT_MOCK_BOOKINGS uses hardcoded names.
+if (MOCK_BOOKINGS.length === 0 && DEFAULT_MOCK_BOOKINGS.length > 0 && typeof window !== 'undefined') {
+    console.log("KarigarKart: Initializing MOCK_BOOKINGS with default data and saving to localStorage.");
+    MOCK_BOOKINGS = [...DEFAULT_MOCK_BOOKINGS];
+    saveBookingsToLocalStorage();
 }

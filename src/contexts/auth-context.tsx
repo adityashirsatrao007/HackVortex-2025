@@ -14,7 +14,17 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import type { UserRole, Customer, Worker as WorkerType } from '@/lib/types';
-import { MOCK_WORKERS, MOCK_CUSTOMERS, saveWorkersToLocalStorage, saveCustomersToLocalStorage, saveUserRoleToLocalStorage, loadUserRoleFromLocalStorage, detectUserRoleFromMocks, checkProfileCompletion } from '@/lib/constants';
+import {
+  MOCK_WORKERS,
+  MOCK_CUSTOMERS,
+  saveWorkersToLocalStorage,
+  saveCustomersToLocalStorage,
+  saveUserRoleToLocalStorage,
+  loadUserRoleFromLocalStorage,
+  detectUserRoleFromMocks,
+  checkProfileCompletion,
+  refreshAllMockData, // Import the new refresh function
+} from '@/lib/constants';
 
 interface AuthState {
   currentUser: FirebaseUser | null;
@@ -43,63 +53,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-
-    const handleAuthStateChange = (user: FirebaseUser | null) => {
-      setLoading(true);
-      try {
-        if (user) {
-          setCurrentUser(user);
-          const persistedRole = loadUserRoleFromLocalStorage(user.uid);
-          
-          let roleToSet: UserRole | null = null;
-          if (userAppRole && currentUser?.uid === user.uid) { // Prioritize role just set by signup/login/selection
-            roleToSet = userAppRole;
-          } else if (persistedRole) {
-            roleToSet = persistedRole;
-          } else if (user.email) {
-            roleToSet = detectUserRoleFromMocks(user.email);
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        setLoading(true);
+        try {
+          if (typeof window !== 'undefined') {
+            console.log("Auth state changed, refreshing mock data...");
+            refreshAllMockData(); // Refresh MOCK_WORKERS, etc. from localStorage
           }
-          
-          setUserAppRole(roleToSet);
-          setIsProfileComplete(checkProfileCompletion(user, roleToSet));
-        } else {
+
+          if (user) {
+            setCurrentUser(user);
+            const persistedRole = loadUserRoleFromLocalStorage(user.uid);
+            
+            let roleToSet: UserRole | null = null;
+            // Check if role was just set by selectUserRoleAndInitializeProfile by comparing with current userAppRole state
+            // This is a bit indirect, ideally selectUserRoleAndInitializeProfile would directly influence this more clearly
+            if (userAppRole && currentUser?.uid === user.uid) { 
+              roleToSet = userAppRole;
+            } else if (persistedRole) {
+              roleToSet = persistedRole;
+            }
+            // Removed detection from mocks here as role should be set by user or persisted
+            
+            setUserAppRole(roleToSet); // Set role (could be null if new user)
+            setIsProfileComplete(checkProfileCompletion(user, roleToSet));
+
+          } else {
+            setCurrentUser(null);
+            setUserAppRole(null);
+            setIsProfileComplete(false);
+          }
+        } catch (e) {
+          console.error("KarigarKart: Critical Error during onAuthStateChanged processing:", e);
           setCurrentUser(null);
           setUserAppRole(null);
           setIsProfileComplete(false);
+        } finally {
+          setLoading(false);
         }
-      } catch (e) {
-        console.error("KarigarKart: Critical Error during onAuthStateChanged processing:", e);
-        setCurrentUser(null);
-        setUserAppRole(null);
-        setIsProfileComplete(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    try {
-      unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+      });
     } catch (error) {
       console.error("KarigarKart: Failed to subscribe to auth state changes:", error);
-      // If subscription itself fails, ensure we're not stuck loading
-      setCurrentUser(null);
-      setUserAppRole(null);
-      setIsProfileComplete(false);
       setLoading(false);
     }
-
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
-  }, []); // Empty dependency array for onAuthStateChanged setup
+  }, []); // Empty dependency array is correct for onAuthStateChanged
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will process user details and set loading to false.
+      // onAuthStateChanged will handle setting user, role, profile completion and setLoading(false)
+      // It will also refresh mock data.
       router.push('/dashboard'); 
       toast({ title: "Logged In", description: "Welcome back!" });
       return userCredential;
@@ -129,13 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         await updateProfile(firebaseUser, { displayName: name });
         
-        // Set basic state for immediate UI update, will be refined by onAuthStateChanged
-        setCurrentUser(firebaseUser); 
-        setUserAppRole(null); 
-        setIsProfileComplete(false);
+        // Explicitly set current user for immediate UI feedback, onAuthStateChanged will refine
+        setCurrentUser(firebaseUser);
+        setUserAppRole(null); // Role will be selected on profile page
+        setIsProfileComplete(false); // Profile is incomplete until role and details are filled
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}! Please select your role and complete your profile.` });
-      router.push('/profile?roleSelection=true');
+      router.push('/profile?roleSelection=true'); // Ensure new users go to role selection
       return userCredential;
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -161,17 +169,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: finalUsername,
       email: currentUser.email || "",
       role: role,
-      avatarUrl: currentUser.photoURL || undefined,
+      avatarUrl: currentUser.photoURL || `https://placehold.co/128x128.png`, // Ensure placeholder
     };
 
-    let userExistsInMocks = false;
     if (role === 'customer') {
       const existingIdx = MOCK_CUSTOMERS.findIndex(c => c.id === currentUser.uid);
       if (existingIdx === -1) {
         MOCK_CUSTOMERS.push({ ...baseUserData, address: '' } as Customer);
       } else {
         MOCK_CUSTOMERS[existingIdx] = { ...MOCK_CUSTOMERS[existingIdx], ...baseUserData, username: finalUsername, role: 'customer' };
-        userExistsInMocks = true;
       }
       saveCustomersToLocalStorage();
     } else if (role === 'worker') {
@@ -185,24 +191,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           rating: 0,
           bio: '',
           hourlyRate: 0,
-          address: '', // Added address for worker
+          address: '',
           aadhaarVerified: false,
           aadhaarNumber: '',
+          selfieWithGpsUrl: `https://placehold.co/100x100.png`, // Ensure placeholder
         } as WorkerType);
       } else {
         MOCK_WORKERS[existingIdx] = { ...MOCK_WORKERS[existingIdx], ...baseUserData, username: finalUsername, role: 'worker' };
-        userExistsInMocks = true;
       }
       saveWorkersToLocalStorage();
     }
     
+    // Profile is still incomplete; details like address/skills need to be filled.
     setIsProfileComplete(false); 
+    // No redirect from here, profile page handles it after full save
   };
 
   const logout = async () => {
     setLoading(true);
     try {
       await firebaseSignOut(auth);
+      // onAuthStateChanged will handle resetting user state and setLoading(false).
+      // It will also refresh mock data.
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error: any) {
@@ -214,12 +224,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const markProfileComplete = useCallback(() => {
     if (auth.currentUser && userAppRole) { 
+        // Refresh data before checking completion to ensure it uses the latest saved profile.
+        refreshAllMockData();
         setIsProfileComplete(checkProfileCompletion(auth.currentUser, userAppRole));
     } else {
         setIsProfileComplete(false);
     }
-  }, [userAppRole]);
-
+  }, [userAppRole]); // userAppRole is a dependency here
 
   const value = {
     currentUser,
