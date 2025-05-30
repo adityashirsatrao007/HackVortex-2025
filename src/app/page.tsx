@@ -33,12 +33,12 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x381.png" // Adjusted dimensions
-                alt="Hero"
-                data-ai-hint="app logo" // Updated hint
+                src="/karigarkart-hero-logo.png" // Updated to reference image in public folder
+                alt="Karigar Kart Logo" // Updated alt text
+                data-ai-hint="app logo"
                 width={600}
-                height={381} // Adjusted height
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow"
+                height={381} 
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-contain sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow" // Changed object-cover to object-contain
               />
             </div>
           </div>
