@@ -120,6 +120,10 @@ body {
     animation: fadeInDelay 1.5s 0.5s ease-out forwards; /* 0.5s delay */
     opacity: 0; /* Start with opacity 0 to make fade-in visible */
   }
+  .animate-fadeInDelayLonger {
+    animation: fadeInDelaySlightlyLonger 1.5s 0.8s ease-out forwards; /* 0.8s delay */
+    opacity: 0; /* Start with opacity 0 to make fade-in visible */
+  }
 }
 
 @keyframes fadeInScaleUp {
@@ -134,6 +138,17 @@ body {
 }
 
 @keyframes fadeInDelay {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelaySlightlyLonger {
   0% {
     opacity: 0;
     transform: translateY(10px);

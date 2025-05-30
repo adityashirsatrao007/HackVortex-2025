@@ -6,7 +6,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
 import { NotificationProvider } from '@/contexts/notification-context';
-import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon'; // Using the worker-in-cart logo
+import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon';
 import { useState, useEffect } from 'react';
 
 const geistSans = Geist({
@@ -19,12 +19,6 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-// Removed metadata export as it's not allowed in Client Components
-// export const metadata: Metadata = {
-//   title: 'Karigar Kart',
-//   description: 'Find and book verified artisans and workers.',
-// };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,15 +28,13 @@ export default function RootLayout({
   const [splashAnimatingOut, setSplashAnimatingOut] = useState(false);
 
   useEffect(() => {
-    // Timer to start the fade-out animation of the splash screen
     const animationOutTimer = setTimeout(() => {
       setSplashAnimatingOut(true);
-    }, 2000); // Start animating out after 2 seconds
+    }, 2000); 
 
-    // Timer to remove the splash screen from the DOM after fade-out is complete
     const removeSplashTimer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500); // Total duration: 2s display + 0.5s fade-out
+    }, 2500); 
 
     return () => {
       clearTimeout(animationOutTimer);
@@ -55,15 +47,16 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
         {showSplash && (
           <div
-            className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background transition-opacity duration-500 ease-in-out
+            className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-primary transition-opacity duration-500 ease-in-out
                         ${splashAnimatingOut ? 'opacity-0' : 'opacity-100'}`}
           >
-            <KarigarKartLogoIcon className="h-20 w-20 text-primary animate-fadeInScaleUp" />
-            <p className="mt-4 text-xl font-semibold text-primary animate-fadeInDelay">Karigar Kart</p>
+            <KarigarKartLogoIcon className="h-20 w-20 text-primary-foreground animate-fadeInScaleUp" />
+            <p className="mt-4 text-3xl font-bold text-primary-foreground animate-fadeInDelay">Karigar Kart</p>
+            <p className="mt-1 text-lg text-primary-foreground/80 animate-fadeInDelayLonger">Local help, one tap away</p>
           </div>
         )}
 
-        {!showSplash && ( // Render main content only when splash is completely gone
+        {!showSplash && ( 
           <AuthProvider>
             <NotificationProvider>
               {children}
