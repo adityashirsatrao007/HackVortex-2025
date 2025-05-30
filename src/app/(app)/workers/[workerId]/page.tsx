@@ -1,10 +1,14 @@
 
+'use client'; // Make it a client component
+
+import { useState, useEffect } from 'react';
 import { WorkerProfileDetails } from '@/components/worker/worker-profile-details';
 import { MOCK_WORKERS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import type { Worker } from '@/lib/types';
 
 interface WorkerProfilePageProps {
   params: {
@@ -12,16 +16,29 @@ interface WorkerProfilePageProps {
   };
 }
 
-async function getWorkerData(workerId: string) {
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate network delay
-  const worker = MOCK_WORKERS.find(w => w.id === workerId);
-  return worker;
-}
+export default function WorkerProfilePage({ params }: WorkerProfilePageProps) {
+  const [worker, setWorker] = useState<Worker | undefined | null>(undefined); // undefined: loading, null: not found
 
-export default async function WorkerProfilePage({ params }: WorkerProfilePageProps) {
-  const worker = await getWorkerData(params.workerId);
+  useEffect(() => {
+    // Simulate a small delay and then find the worker
+    const timer = setTimeout(() => {
+      const foundWorker = MOCK_WORKERS.find(w => w.id === params.workerId);
+      setWorker(foundWorker || null); // Set to null if not found, so we can differentiate from loading
+    }, 100); // Small delay to mimic async fetch and allow MOCK_WORKERS to potentially initialize
 
-  if (!worker) {
+    return () => clearTimeout(timer); // Cleanup timer on unmount
+  }, [params.workerId]);
+
+  if (worker === undefined) { // Loading state
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading worker profile...</p>
+      </div>
+    );
+  }
+
+  if (worker === null) { // Not found state
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
         <Alert variant="destructive" className="max-w-md shadow-lg">
@@ -35,12 +52,13 @@ export default async function WorkerProfilePage({ params }: WorkerProfilePagePro
           <Link href="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4"/>
             Back to Dashboard
-            </Link>
+          </Link>
         </Button>
       </div>
     );
   }
 
+  // Worker found
   return (
     <div className="container mx-auto py-8">
         <Button asChild variant="outline" className="mb-6 shadow hover:shadow-md">
