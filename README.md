@@ -7,7 +7,7 @@ If you encounter any bugs, glitches, or issues, please feel free to open an issu
 We appreciate your feedback and support! 🚀
 
 Crafted with innovation and collaboration by **Team CodeRadiants**, this project is built to make an impact.
-**KarigarKart **
+**KarigarKart**
 is a platform that connects daily wage workers like plumbers, electricians, and carpenters with people who need their services. Workers create verified profiles, and customers can easily find and hire trusted workers nearby. It helps workers get more jobs and helps customers find reliable help quickly.
 
 ---
