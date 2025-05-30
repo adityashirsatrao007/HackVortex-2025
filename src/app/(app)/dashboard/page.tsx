@@ -14,29 +14,29 @@ import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
-  // Initialize with a fresh copy from MOCK_WORKERS to avoid stale data if MOCK_WORKERS is mutated elsewhere
-  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([...MOCK_WORKERS]);
+  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([]); // Initialize as empty
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    // Re-initialize workers when currentUser changes (e.g., after login/signup)
-    // This helps pick up any changes to MOCK_WORKERS if they were updated by auth flow.
+    // This effect runs on mount and whenever currentUser changes.
+    // It ensures filteredWorkers is populated from the MOCK_WORKERS array,
+    // which should include all signed-up users whose data has been saved.
     setFilteredWorkers([...MOCK_WORKERS]);
     setSelectedWorkerId(undefined);
   }, [currentUser]); 
 
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
-    let workers = [...MOCK_WORKERS]; // Start with a fresh copy of all workers
+    let workersToFilter = [...MOCK_WORKERS]; // Start with the full, current list from constants
     if (filters.category) {
-      workers = workers.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
+      workersToFilter = workersToFilter.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
     }
     if (filters.query) {
       const queryLower = filters.query.toLowerCase();
-      workers = workers.filter(worker =>
+      workersToFilter = workersToFilter.filter(worker =>
         worker.username.toLowerCase().includes(queryLower) // Case-insensitive username search
       );
     }
-    setFilteredWorkers(workers);
+    setFilteredWorkers(workersToFilter);
     setSelectedWorkerId(undefined); 
   };
 
