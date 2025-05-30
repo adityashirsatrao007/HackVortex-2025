@@ -47,8 +47,7 @@ npm run dev
 npm start
 ```
 
-Open your browser and go to:
-`http://localhost:3000`
+Click on the local host and you can checkout our project.
 
 ---
 
