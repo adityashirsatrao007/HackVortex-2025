@@ -40,10 +40,9 @@ npm install
 **Step 2: Run the Development Server**
 
 ```bash
-# For Next.js
 npm run dev
 
-# OR for Create React App
+# OR
 npm start
 ```
 
