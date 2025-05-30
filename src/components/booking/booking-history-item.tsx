@@ -4,18 +4,21 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, User, MapPin, Star, MessageSquare, Edit, Trash2 } from 'lucide-react';
+import { CalendarDays, User, MapPin, Star, MessageSquare, Edit, Trash2, Check, XIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Booking } from '@/lib/types';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { ReviewForm } from '@/components/booking/review-form'; 
+import { ReviewForm } from '@/components/booking/review-form';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
+import { MOCK_BOOKINGS, saveBookingsToLocalStorage } from '@/lib/constants';
+import { useNotification } from '@/contexts/notification-context';
 
 interface BookingHistoryItemProps {
   booking: Booking;
+  onBookingUpdate?: () => void; // Callback to inform parent of an update
 }
 
 const statusColors: Record<Booking['status'], string> = {
@@ -23,34 +26,70 @@ const statusColors: Record<Booking['status'], string> = {
   accepted: 'bg-blue-500 hover:bg-blue-600',
   'in-progress': 'bg-indigo-500 hover:bg-indigo-600',
   completed: 'bg-green-500 hover:bg-green-600',
-  cancelled: 'bg-slate-500 hover:bg-slate-600', // Neutral for cancelled
+  cancelled: 'bg-slate-500 hover:bg-slate-600',
   rejected: 'bg-red-500 hover:bg-red-600',
 };
 
-export function BookingHistoryItem({ booking }: BookingHistoryItemProps) {
-  const { userAppRole } = useAuth();
+export function BookingHistoryItem({ booking, onBookingUpdate }: BookingHistoryItemProps) {
+  const { currentUser, userAppRole } = useAuth();
+  const { addNotification } = useNotification();
   const { toast } = useToast();
   const [isReviewDialogOpen, setIsReviewDialogOpen] = React.useState(false);
 
   const canReview = userAppRole === 'customer' && booking.status === 'completed' && !booking.review;
-  const canCancel = userAppRole === 'customer' && (booking.status === 'pending' || booking.status === 'accepted');
-  const workerActions = userAppRole === 'worker'; // Placeholder for future worker actions
+  const canCancelByCustomer = userAppRole === 'customer' && (booking.status === 'pending' || booking.status === 'accepted');
+  const canWorkerAct = userAppRole === 'worker' && booking.status === 'pending';
 
-  const handleCancelBooking = () => {
-    // Mock cancellation
-    // In a real app, this would call an API
-    booking.status = 'cancelled'; // Mutate mock data directly for demo
-    toast({
-      title: "Booking Cancelled",
-      description: `Your booking with ${booking.workerName} has been cancelled.`,
-    });
-    // You might need a way to re-render the list or update parent state here
+  const handleWorkerAction = (newStatus: 'accepted' | 'rejected') => {
+    const bookingIndex = MOCK_BOOKINGS.findIndex(b => b.id === booking.id);
+    if (bookingIndex > -1 && currentUser) {
+      MOCK_BOOKINGS[bookingIndex].status = newStatus;
+      saveBookingsToLocalStorage();
+
+      addNotification({
+        recipientId: booking.customerId,
+        recipientRole: 'customer',
+        bookingId: booking.id,
+        message: `${currentUser.displayName || 'A worker'} has ${newStatus} your booking for ${booking.serviceCategory}.`,
+        serviceCategory: booking.serviceCategory,
+        workerName: currentUser.displayName || booking.workerName, // Worker is the sender
+      });
+
+      toast({
+        title: `Booking ${newStatus === 'accepted' ? 'Accepted' : 'Rejected'}`,
+        description: `You have ${newStatus} the booking for ${booking.serviceCategory} from ${booking.customerName}.`,
+      });
+      onBookingUpdate?.(); // Notify parent to re-render
+    } else {
+      toast({ variant: "destructive", title: "Error", description: "Could not update booking." });
+    }
   };
-  
+
+  const handleCancelBookingByCustomer = () => {
+    const bookingIndex = MOCK_BOOKINGS.findIndex(b => b.id === booking.id);
+    if (bookingIndex > -1) {
+        MOCK_BOOKINGS[bookingIndex].status = 'cancelled';
+        saveBookingsToLocalStorage();
+        toast({
+          title: "Booking Cancelled",
+          description: `Your booking for ${booking.serviceCategory} with ${booking.workerName} has been cancelled.`,
+        });
+        // TODO: Notify worker about cancellation if status was 'accepted'
+        addNotification({
+            recipientId: booking.workerId,
+            recipientRole: 'worker',
+            bookingId: booking.id,
+            message: `${booking.customerName} has cancelled their booking for ${booking.serviceCategory}.`,
+            serviceCategory: booking.serviceCategory,
+            customerName: booking.customerName,
+        });
+        onBookingUpdate?.();
+    }
+  };
+
   const handleReviewSubmitted = () => {
     setIsReviewDialogOpen(false);
-    // Potentially refresh booking data or parent component state here
-    // For now, the review form itself handles adding to MOCK_REVIEWS
+    onBookingUpdate?.();
   };
 
 
@@ -101,7 +140,26 @@ export function BookingHistoryItem({ booking }: BookingHistoryItemProps) {
           </div>
         )}
       </CardContent>
-      <CardFooter className="justify-end gap-2 px-5 pb-5 pt-0">
+      <CardFooter className="justify-end gap-2 px-5 pb-5 pt-0 flex-wrap">
+        {canWorkerAct && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-600 shadow hover:shadow-md"
+              onClick={() => handleWorkerAction('rejected')}
+            >
+              <XIcon className="mr-2 h-4 w-4" /> Reject
+            </Button>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-md"
+              onClick={() => handleWorkerAction('accepted')}
+            >
+              <Check className="mr-2 h-4 w-4" /> Accept
+            </Button>
+          </>
+        )}
         {canReview && (
           <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
             <DialogTrigger asChild>
@@ -117,20 +175,14 @@ export function BookingHistoryItem({ booking }: BookingHistoryItemProps) {
             </DialogContent>
           </Dialog>
         )}
-        {canCancel && (
-          <Button variant="destructive" size="sm" onClick={handleCancelBooking} className="shadow hover:shadow-md">
+        {canCancelByCustomer && (
+          <Button variant="destructive" size="sm" onClick={handleCancelBookingByCustomer} className="shadow hover:shadow-md">
             <Trash2 className="mr-2 h-4 w-4" /> Cancel Booking
           </Button>
         )}
-        {workerActions && booking.status === 'pending' && (
-             <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-md">Accept Job</Button>
-        )}
-        {workerActions && booking.status === 'accepted' && (
-             <Button variant="outline" size="sm" className="shadow hover:shadow-md">Mark In-Progress</Button>
-        )}
         {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 hover:text-primary">
-            <MessageSquare className="mr-2 h-4 w-4" /> 
+            <MessageSquare className="mr-2 h-4 w-4" />
             {userAppRole === 'customer' ? 'Contact Worker' : 'Contact Customer'}
             </Button>
         )}

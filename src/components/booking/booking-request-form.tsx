@@ -22,11 +22,11 @@ import { CalendarIcon, Clock, Send, MapPinIcon, IndianRupee } from "lucide-react
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { ServiceCategory, Worker, Booking } from "@/lib/types"; 
-import { SERVICE_CATEGORIES, MOCK_BOOKINGS, MOCK_CUSTOMERS } from "@/lib/constants";
+import type { ServiceCategory, Worker, Booking, UserRole } from '@/lib/types';
+import { SERVICE_CATEGORIES, MOCK_BOOKINGS, MOCK_CUSTOMERS, saveBookingsToLocalStorage } from "@/lib/constants";
 import React from "react";
-import { useAuth } from "@/hooks/use-auth"; 
-import { useNotification } from "@/contexts/notification-context"; 
+import { useAuth } from "@/hooks/use-auth";
+import { useNotification } from "@/contexts/notification-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const bookingFormSchema = z.object({
@@ -60,8 +60,8 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     defaultValues: {
       serviceCategory: worker.skills[0] || undefined,
       date: undefined,
-      time: "09:00", 
-      location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "", 
+      time: "09:00",
+      location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "",
       notes: "",
     },
   });
@@ -75,7 +75,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
     }
 
     const customerName = currentUser.displayName || MOCK_CUSTOMERS.find(c => c.email === currentUser.email)?.name || "A Customer";
-    
+
     const newBooking: Booking = {
       id: `booking-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       customerId: currentUser.uid,
@@ -84,18 +84,26 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
       workerName: worker.name,
       serviceCategory: data.serviceCategory as ServiceCategory,
       dateTime: new Date(`${format(data.date, "yyyy-MM-dd")}T${data.time}:00`).toISOString(),
-      status: 'pending', 
+      status: 'pending',
       locationPreview: data.location,
       notes: data.notes,
     };
 
-    MOCK_BOOKINGS.push(newBooking); 
-    addNotification(newBooking); 
+    MOCK_BOOKINGS.unshift(newBooking); // Add to the beginning of the array
+    saveBookingsToLocalStorage();
+
+    addNotification({
+        recipientId: worker.id,
+        recipientRole: 'worker',
+        bookingId: newBooking.id,
+        message: `New booking request for ${newBooking.serviceCategory} from ${newBooking.customerName}.`,
+        serviceCategory: newBooking.serviceCategory,
+        customerName: newBooking.customerName,
+    });
 
     toast({
       title: "Booking Request Sent!",
       description: `Your request for ${data.serviceCategory} with ${worker.name} on ${format(data.date, "PPP")} at ${data.time} has been sent.`,
-      className: "bg-green-500 text-white", // This might be overridden by theme, consider variants
     });
     form.reset({
         serviceCategory: worker.skills[0] || undefined,
@@ -104,7 +112,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
         location: MOCK_CUSTOMERS.find(c => c.email === currentUser?.email)?.address || "",
         notes: ""
     });
-    onFormSubmit?.(); 
+    onFormSubmit?.();
   }
 
   const timeSlots = Array.from({ length: (18 - 8) * 2 + 1 }, (_, i) => {
@@ -209,7 +217,7 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
             )}
           />
         </div>
-        
+
         <FormField
           control={form.control}
           name="location"
@@ -256,8 +264,8 @@ export function BookingRequestForm({ worker, onFormSubmit }: BookingRequestFormP
             </Card>
         )}
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg text-base py-6 transition-transform active:scale-95"
         >
           <Send /> Send Booking Request

@@ -19,7 +19,7 @@ export interface BaseUser {
 
 export interface Customer extends BaseUser {
   role: 'customer';
-  address: string; 
+  address: string;
 }
 
 export interface Worker extends BaseUser {
@@ -27,7 +27,7 @@ export interface Worker extends BaseUser {
   skills: ServiceCategory[];
   location: GeoLocation;
   isVerified: boolean;
-  aadhaarNumber?: string; // Added Aadhaar number
+  aadhaarNumber?: string;
   aadhaarVerified?: boolean;
   selfieWithGpsUrl?: string;
   rating: number;
@@ -35,7 +35,7 @@ export interface Worker extends BaseUser {
   hourlyRate?: number;
   availability?: { day: string, start: string, end: string }[];
   totalJobs?: number;
-  address: string; 
+  address: string;
 }
 
 export type BookingStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled' | 'rejected';
@@ -67,13 +67,15 @@ export type User = Customer | Worker;
 
 export interface NotificationType {
   id:string;
-  workerId: string;
+  recipientId: string; // Changed from workerId
+  recipientRole: UserRole; // Added to help direct notifications appropriately
   bookingId: string;
-  customerName: string;
-  serviceCategory: ServiceCategory;
   message: string;
   timestamp: string; // ISO string
   read: boolean;
+  // Optional fields for more context in the notification message
+  serviceCategory?: ServiceCategory;
+  customerName?: string; // Name of the customer who made the booking
+  workerName?: string; // Name of the worker involved
 }
-
     

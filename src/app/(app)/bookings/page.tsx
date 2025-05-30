@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BookingHistoryItem } from '@/components/booking/booking-history-item';
 import type { Booking } from '@/lib/types';
 import { MOCK_BOOKINGS, MOCK_WORKERS, MOCK_CUSTOMERS } from '@/lib/constants';
@@ -9,57 +9,64 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListChecks, CalendarClock, CalendarX2, Briefcase, History, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from "@/components/ui/button"; // Added import
-import Link from 'next/link'; // Added import
+import { Button } from "@/components/ui/button";
+import Link from 'next/link';
 
 export default function BookingHistoryPage() {
   const { currentUser, userAppRole } = useAuth();
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
   const [pageTitle, setPageTitle] = useState("My Bookings");
   const [pageDescription, setPageDescription] = useState("View and manage your service bookings.");
+  // State to trigger re-fetch/re-filter of bookings
+  const [bookingUpdateCounter, setBookingUpdateCounter] = useState(0);
 
-  useEffect(() => {
+
+  const fetchUserBookings = useCallback(() => {
     if (!currentUser) return;
 
     let bookingsToDisplay: Booking[] = [];
+    const allBookings = [...MOCK_BOOKINGS]; // Use a fresh copy
 
     if (userAppRole === 'worker') {
       setPageTitle("My Job Schedule");
       setPageDescription("Manage your assigned jobs and requests.");
-      const currentWorkerProfile = MOCK_WORKERS.find(w => w.email === currentUser.email);
+      const currentWorkerProfile = MOCK_WORKERS.find(w => w.email === currentUser.email || w.id === currentUser.uid);
       if (currentWorkerProfile) {
-        bookingsToDisplay = MOCK_BOOKINGS.filter(b => b.workerId === currentWorkerProfile.id);
+        bookingsToDisplay = allBookings.filter(b => b.workerId === currentWorkerProfile.id);
       } else {
         console.warn("Worker profile not found for email:", currentUser.email, "Displaying no jobs.");
       }
-    } else { 
+    } else {
       setPageTitle("My Bookings");
       setPageDescription("View and manage your service bookings.");
-      const currentCustomerProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email);
+      const currentCustomerProfile = MOCK_CUSTOMERS.find(c => c.email === currentUser.email || c.id === currentUser.uid);
       if (currentCustomerProfile) {
-        bookingsToDisplay = MOCK_BOOKINGS.filter(b => b.customerId === currentCustomerProfile.id);
+        bookingsToDisplay = allBookings.filter(b => b.customerId === currentCustomerProfile.id);
       } else {
-        const customerByName = MOCK_CUSTOMERS.find(c => c.name === currentUser.displayName);
-        if (customerByName) {
-            bookingsToDisplay = MOCK_BOOKINGS.filter(b => b.customerId === customerByName.id);
-        } else {
-            console.warn("Customer profile not found for email:", currentUser.email, "Displaying no bookings.");
-        }
+         console.warn("Customer profile not found for email:", currentUser.email, "Displaying no bookings.");
       }
     }
     setUserBookings(bookingsToDisplay.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()));
   }, [currentUser, userAppRole]);
 
 
-  const upcomingBookings = userBookings.filter(b => 
+  useEffect(() => {
+    fetchUserBookings();
+  }, [fetchUserBookings, bookingUpdateCounter]); // Re-fetch when counter changes
+
+  const handleBookingUpdate = () => {
+    setBookingUpdateCounter(prev => prev + 1);
+  };
+
+  const upcomingBookings = userBookings.filter(b =>
     ['pending', 'accepted', 'in-progress'].includes(b.status) && new Date(b.dateTime) >= new Date()
   ).sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 
-  const pastBookings = userBookings.filter(b => 
+  const pastBookings = userBookings.filter(b =>
     b.status === 'completed' || (new Date(b.dateTime) < new Date() && !['pending', 'accepted', 'in-progress', 'cancelled', 'rejected'].includes(b.status))
   ).sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
-  
-  const issueBookings = userBookings.filter(b => 
+
+  const issueBookings = userBookings.filter(b =>
     ['cancelled', 'rejected'].includes(b.status) || (new Date(b.dateTime) < new Date() && ['pending', 'accepted', 'in-progress'].includes(b.status))
   ).sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
@@ -83,7 +90,7 @@ export default function BookingHistoryPage() {
     return (
       <div className="space-y-6">
         {bookings.map(booking => (
-          <BookingHistoryItem key={booking.id} booking={booking} />
+          <BookingHistoryItem key={booking.id} booking={booking} onBookingUpdate={handleBookingUpdate} />
         ))}
       </div>
     );

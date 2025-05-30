@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, Briefcase, ListChecks, UserCircle, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell } from 'lucide-react';
-import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon'; // Updated import
+import { Menu, Briefcase, ListChecks, UserCircle, LogOut, LogIn, UserPlus, LayoutDashboard, CalendarClock, Bell, CheckCircle, XCircle, Info } from 'lucide-react';
+import { KarigarKartLogoIcon } from '@/components/icons/karigar-kart-logo-icon';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useNotification } from '@/contexts/notification-context';
@@ -34,11 +34,11 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
         onClick={onClick}
         className={cn(
           'text-sm font-medium transition-colors',
-          isDesktop 
-            ? 'hover:text-primary hover:bg-primary/10 px-3 py-2 rounded-md' 
+          isDesktop
+            ? 'hover:text-primary hover:bg-primary/10 px-3 py-2 rounded-md'
             : 'hover:text-primary py-3 px-3 rounded-md hover:bg-primary/10 flex items-center text-base gap-2',
-          isActive 
-            ? (isDesktop ? 'text-primary bg-primary/15 font-semibold' : 'text-primary font-semibold bg-primary/15') 
+          isActive
+            ? (isDesktop ? 'text-primary bg-primary/15 font-semibold' : 'text-primary font-semibold bg-primary/15')
             : 'text-muted-foreground',
           className
         )}
@@ -50,13 +50,31 @@ const NavLink = ({ href, children, className, onClick, isDesktop }: NavLinkProps
 };
 
 function NotificationItem({ notification, onMarkRead }: { notification: NotificationType, onMarkRead: (id: string) => void }) {
+  const isPositive = notification.message.toLowerCase().includes("accepted") || notification.message.toLowerCase().includes("new booking");
+  const isNegative = notification.message.toLowerCase().includes("rejected") || notification.message.toLowerCase().includes("cancelled");
+
+  let Icon = Info;
+  let iconColor = "text-blue-500";
+  if (isPositive) { Icon = CheckCircle; iconColor = "text-green-500"; }
+  if (isNegative) { Icon = XCircle; iconColor = "text-red-500"; }
+
+
   return (
-    <div className={cn("p-3 border-b border-border/50 hover:bg-secondary/50 transition-colors", !notification.read && "bg-primary/5 font-medium")}>
-      <p className="text-sm">{notification.message}</p>
-      <p className="text-xs text-muted-foreground mb-1">
-        For {notification.serviceCategory} by {notification.customerName}
-      </p>
-      <div className="flex justify-between items-center">
+    <div className={cn("p-3 border-b border-border/50 hover:bg-secondary/50 transition-colors", !notification.read && "bg-primary/5")}>
+      <div className="flex items-start gap-3">
+        <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${iconColor}`} />
+        <div className="flex-1">
+            <p className={cn("text-sm", !notification.read && "font-semibold text-foreground")}>{notification.message}</p>
+            {(notification.customerName || notification.workerName) && (
+                <p className="text-xs text-muted-foreground mb-1">
+                    {notification.recipientRole === 'worker' && notification.customerName ? `From: ${notification.customerName}` : ''}
+                    {notification.recipientRole === 'customer' && notification.workerName ? `By: ${notification.workerName}` : ''}
+                    {notification.serviceCategory ? ` for ${notification.serviceCategory}` : ''}
+                </p>
+            )}
+        </div>
+      </div>
+      <div className="flex justify-between items-center mt-1 pl-8">
         <p className="text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
         </p>
@@ -74,7 +92,7 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
 export default function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { currentUser, userAppRole, logout, loading, isProfileComplete } = useAuth();
-  const { getUnreadNotificationsCount, getNotificationsForWorker, markAsRead, markAllAsRead } = useNotification();
+  const { getUnreadNotificationsCount, getNotificationsForUser, markAsRead, markAllAsRead } = useNotification();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -86,46 +104,45 @@ export default function Header() {
   };
 
   let navItems: { href: string; label: string; icon: JSX.Element }[] = [];
-  if (currentUser && isProfileComplete) { 
+  if (currentUser && isProfileComplete) {
     if (userAppRole === 'worker') {
       navItems = [
         { href: '/dashboard', label: 'My Jobs', icon: <LayoutDashboard className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/bookings', label: 'Schedule', icon: <CalendarClock className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ];
-    } else { 
+    } else if (userAppRole === 'customer') {
       navItems = [
         { href: '/dashboard', label: 'Find Workers', icon: <Briefcase className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/bookings', label: 'My Bookings', icon: <ListChecks className="h-4 w-4 mr-2 md:mr-0" /> },
         { href: '/profile', label: 'Profile', icon: <UserCircle className="h-4 w-4 mr-2 md:mr-0" /> },
       ];
     }
-  } else if (currentUser && !isProfileComplete && pathname === '/profile') { 
-     // No main nav items when profile completion is required and user is on profile page
+  } else if (currentUser && !isProfileComplete && pathname === '/profile') {
      navItems = [];
   }
 
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
-  const unreadCount = currentUser && userAppRole === 'worker' ? getUnreadNotificationsCount(currentUser.uid) : 0;
-  const workerNotifications = currentUser && userAppRole === 'worker' ? getNotificationsForWorker(currentUser.uid) : [];
+  const unreadCount = currentUser ? getUnreadNotificationsCount(currentUser.uid) : 0;
+  const userNotifications = currentUser ? getNotificationsForUser(currentUser.uid) : [];
 
-  if (loading && !isAuthPage && pathname !== '/profile') { 
+  if (loading && !isAuthPage && pathname !== '/profile') {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="container flex h-16 items-center justify-between">
            <Link href={currentUser ? "/dashboard" : "/"} className="flex items-center gap-2" prefetch={false}>
-            <KarigarKartLogoIcon className="h-8 w-8 text-primary" /> 
+            <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
           </Link>
         </div>
       </header>
     );
   }
-  
+
   if (isAuthPage && !currentUser) {
      return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="container flex h-16 items-center justify-center">
           <Link href="/" className="flex items-center gap-2" prefetch={false}>
             <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
@@ -141,7 +158,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 items-center justify-between">
         <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" prefetch={false}>
-          <KarigarKartLogoIcon className="h-8 w-8 text-primary" /> 
+          <KarigarKartLogoIcon className="h-8 w-8 text-primary" />
           <span className="text-xl font-bold text-foreground md:text-2xl">Karigar Kart</span>
         </Link>
 
@@ -154,7 +171,7 @@ export default function Header() {
             ))}
           </nav>
         )}
-        
+
         <div className="flex items-center gap-2">
           {!currentUser && !loading && (
             <div className="hidden md:flex items-center gap-2">
@@ -167,7 +184,7 @@ export default function Header() {
             </div>
           )}
 
-          {currentUser && userAppRole === 'worker' && isProfileComplete && (
+          {currentUser && isProfileComplete && ( // Show bell for any logged-in, profile-complete user
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative rounded-full">
@@ -180,26 +197,24 @@ export default function Header() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0 shadow-xl">
-                <div className="p-3 border-b bg-secondary/50">
+              <PopoverContent className="w-80 sm:w-96 p-0 shadow-xl">
+                <div className="p-3 border-b bg-secondary/50 flex justify-between items-center">
                   <h4 className="font-medium text-sm text-secondary-foreground">Notifications</h4>
+                   {userNotifications.length > 0 && unreadCount > 0 && (
+                     <Button variant="link" size="sm" className="text-xs h-auto p-0 text-primary hover:text-accent" onClick={() => currentUser && markAllAsRead(currentUser.uid)}>
+                        Mark all as read
+                    </Button>
+                   )}
                 </div>
                 <ScrollArea className="h-[300px]">
-                  {workerNotifications.length > 0 ? (
-                    workerNotifications.map(notif => (
+                  {userNotifications.length > 0 ? (
+                    userNotifications.map(notif => (
                       <NotificationItem key={notif.id} notification={notif} onMarkRead={markAsRead} />
                     ))
                   ) : (
                     <p className="p-4 text-sm text-muted-foreground text-center">No new notifications.</p>
                   )}
                 </ScrollArea>
-                 {workerNotifications.length > 0 && unreadCount > 0 && (
-                    <div className="p-2 border-t flex justify-end">
-                        <Button variant="link" size="sm" className="text-primary hover:text-accent" onClick={() => currentUser && markAllAsRead(currentUser.uid)}>
-                            Mark all as read
-                        </Button>
-                    </div>
-                 )}
               </PopoverContent>
             </Popover>
           )}
@@ -221,16 +236,16 @@ export default function Header() {
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b mb-2">
                   <Link href={currentUser && isProfileComplete ? "/dashboard" : (currentUser ? "/profile" : "/")} className="flex items-center gap-2" onClick={closeSheet} prefetch={false}>
-                      <KarigarKartLogoIcon className="h-7 w-7 text-primary" /> 
+                      <KarigarKartLogoIcon className="h-7 w-7 text-primary" />
                     <span className="text-lg font-semibold">Karigar Kart</span>
                   </Link>
                 </div>
                 <nav className="flex-grow p-4 space-y-1">
                   {currentUser && isProfileComplete ? (
-                    navItems.map((item) => ( 
-                      <NavLink 
-                        key={item.href} 
-                        href={item.href} 
+                    navItems.map((item) => (
+                      <NavLink
+                        key={item.href}
+                        href={item.href}
                         onClick={closeSheet}
                       >
                         {item.icon}
@@ -252,7 +267,7 @@ export default function Header() {
                   </div>
                 )}
               </div>
-              <SheetClose onClick={closeSheet} /> 
+              <SheetClose onClick={closeSheet} />
             </SheetContent>
           </Sheet>
         </div>

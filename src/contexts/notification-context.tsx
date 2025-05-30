@@ -2,16 +2,16 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { NotificationType, Booking, ServiceCategory } from '@/lib/types';
-import { useAuth } from './auth-context'; // To get current worker ID
+import type { NotificationType, Booking, ServiceCategory, UserRole } from '@/lib/types'; // Added UserRole
+import { useAuth } from './auth-context';
 
 interface NotificationContextType {
   notifications: NotificationType[];
-  addNotification: (booking: Booking, message?: string) => void;
-  getUnreadNotificationsCount: (workerId: string) => number;
-  getNotificationsForWorker: (workerId: string) => NotificationType[];
+  addNotification: (details: Omit<NotificationType, 'id' | 'timestamp' | 'read'>) => void; // Made more generic
+  getUnreadNotificationsCount: (userId: string) => number;
+  getNotificationsForUser: (userId: string) => NotificationType[];
   markAsRead: (notificationId: string) => void;
-  markAllAsRead: (workerId: string) => void;
+  markAllAsRead: (userId: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -22,7 +22,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationType[]>(() => {
     if (typeof window !== 'undefined') {
       const storedNotifications = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-      return storedNotifications ? JSON.parse(storedNotifications) : [];
+      try {
+        const parsed = storedNotifications ? JSON.parse(storedNotifications) : [];
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error("Failed to parse notifications from localStorage", e);
+        return [];
+      }
     }
     return [];
   });
@@ -33,37 +39,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [notifications]);
 
-  const addNotification = useCallback((booking: Booking, message?: string) => {
+  const addNotification = useCallback((details: Omit<NotificationType, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: NotificationType = {
-      id: `notif-${Date.now()}-${booking.id}`,
-      workerId: booking.workerId,
-      bookingId: booking.id,
-      customerName: booking.customerName,
-      serviceCategory: booking.serviceCategory,
-      message: message || `New booking request for ${booking.serviceCategory} from ${booking.customerName}.`,
+      ...details,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       timestamp: new Date().toISOString(),
       read: false,
     };
-    setNotifications(prev => [newNotification, ...prev]);
+    setNotifications(prev => [newNotification, ...prev.slice(0, 49)]); // Keep max 50 notifications
   }, []);
 
-  const getUnreadNotificationsCount = useCallback((workerId: string): number => {
-    return notifications.filter(n => n.workerId === workerId && !n.read).length;
+  const getUnreadNotificationsCount = useCallback((userId: string): number => {
+    return notifications.filter(n => n.recipientId === userId && !n.read).length;
   }, [notifications]);
 
-  const getNotificationsForWorker = useCallback((workerId: string): NotificationType[] => {
-    return notifications.filter(n => n.workerId === workerId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const getNotificationsForUser = useCallback((userId: string): NotificationType[] => {
+    return notifications.filter(n => n.recipientId === userId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [notifications]);
 
   const markAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
   }, []);
 
-  const markAllAsRead = useCallback((workerId: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.workerId === workerId ? { ...n, read: true } : n)
+  const markAllAsRead = useCallback((userId: string) => {
+    setNotifications(prev =>
+      prev.map(n => n.recipientId === userId ? { ...n, read: true } : n)
     );
   }, []);
 
@@ -72,7 +74,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     notifications,
     addNotification,
     getUnreadNotificationsCount,
-    getNotificationsForWorker,
+    getNotificationsForUser,
     markAsRead,
     markAllAsRead,
   };

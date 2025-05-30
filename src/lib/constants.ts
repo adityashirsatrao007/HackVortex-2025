@@ -104,30 +104,37 @@ export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
 const WORKERS_STORAGE_KEY = 'karigarKartMockWorkers';
 const CUSTOMERS_STORAGE_KEY = 'karigarKartMockCustomers';
 const USER_ROLE_STORAGE_KEY_PREFIX = 'karigarKartUserRole_';
+const BOOKINGS_STORAGE_KEY = 'karigarKartMockBookings'; // New key for bookings
+
 
 // Basic type guard functions
-const isValidWorkerArray = (arr: any): arr is Worker[] => Array.isArray(arr) && arr.every(item => 
+const isValidWorkerArray = (arr: any): arr is Worker[] => Array.isArray(arr) && arr.every(item =>
   typeof item === 'object' && item !== null &&
   'id' in item && 'role' in item && item.role === 'worker' &&
   'name' in item && 'username' in item && 'email' in item &&
-  Array.isArray(item.skills) && // Ensure skills is an array
+  Array.isArray(item.skills) &&
   typeof item.location === 'object' && item.location !== null && 'lat' in item.location && 'lng' in item.location &&
   typeof item.isVerified === 'boolean' &&
   typeof item.rating === 'number' &&
-  typeof item.address === 'string' // ensure address exists and is a string
+  typeof item.address === 'string'
 );
 
-const isValidCustomerArray = (arr: any): arr is Customer[] => Array.isArray(arr) && arr.every(item => 
+const isValidCustomerArray = (arr: any): arr is Customer[] => Array.isArray(arr) && arr.every(item =>
   typeof item === 'object' && item !== null &&
   'id' in item && 'role' in item && item.role === 'customer' &&
   'name' in item && 'username' in item && 'email' in item &&
   typeof item.address === 'string'
 );
 
+const isValidBookingArray = (arr: any): arr is Booking[] => Array.isArray(arr) && arr.every(item =>
+    typeof item === 'object' && item !== null &&
+    'id' in item && 'customerId' in item && 'workerId' in item && 'status' in item
+);
+
 
 // Function to safely load and initialize data from localStorage
 function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (data: any) => data is T[]): T[] {
-  let instance: T[] = JSON.parse(JSON.stringify(defaultData)); // Deep copy of default data
+  let instance: T[] = JSON.parse(JSON.stringify(defaultData));
 
   if (typeof window !== 'undefined') {
     try {
@@ -138,10 +145,10 @@ function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (data: 
           instance = parsed;
         } else {
           console.warn(`KarigarKart: Data in localStorage for ${key} is invalid or malformed. Using defaults and re-saving.`);
-          localStorage.setItem(key, JSON.stringify(instance)); // Save default data
+          localStorage.setItem(key, JSON.stringify(instance));
         }
       } else {
-        localStorage.setItem(key, JSON.stringify(instance)); // Save default data if none stored
+        localStorage.setItem(key, JSON.stringify(instance));
       }
     } catch (e) {
       console.warn(`KarigarKart: Error processing localStorage for ${key}. Using defaults and re-saving.`, e);
@@ -239,22 +246,22 @@ export function checkProfileCompletion(
 }
 
 const safeGetWorkerById = (id: string, fallbackId: string): string => {
-  const worker = MOCK_WORKERS.find(w => w.id === id);
-  return worker ? worker.id : DEFAULT_MOCK_WORKERS.find(w => w.id === fallbackId)?.id || fallbackId;
+  const worker = MOCK_WORKERS.find(w => w.id === id) || DEFAULT_MOCK_WORKERS.find(w => w.id === id);
+  return worker ? worker.id : (DEFAULT_MOCK_WORKERS.find(w => w.id === fallbackId)?.id || fallbackId);
 };
 const safeGetWorkerNameById = (id: string, fallbackName: string): string => {
-  const worker = MOCK_WORKERS.find(w => w.id === id);
-  return worker ? worker.name : DEFAULT_MOCK_WORKERS.find(w => w.id === fallbackName)?.name || fallbackName;
+  const worker = MOCK_WORKERS.find(w => w.id === id) || DEFAULT_MOCK_WORKERS.find(w => w.id === id);
+  return worker ? worker.name : (DEFAULT_MOCK_WORKERS.find(w => w.id === fallbackName)?.name || fallbackName);
 };
 const safeGetCustomerId = (email: string | null, fallbackId: string): string => {
   if (!email) return DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackId)?.id || fallbackId;
-  const customer = MOCK_CUSTOMERS.find(c => c.email === email);
-  return customer ? customer.id : DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackId)?.id || fallbackId;
+  const customer = MOCK_CUSTOMERS.find(c => c.email === email) || DEFAULT_MOCK_CUSTOMERS.find(c => c.email === email);
+  return customer ? customer.id : (DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackId)?.id || fallbackId);
 };
 const safeGetCustomerName = (email: string | null, fallbackName: string): string => {
   if (!email) return DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackName)?.name || fallbackName;
-  const customer = MOCK_CUSTOMERS.find(c => c.email === email);
-  return customer ? customer.name : DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackName)?.name || fallbackName;
+  const customer = MOCK_CUSTOMERS.find(c => c.email === email) || DEFAULT_MOCK_CUSTOMERS.find(c => c.email === email);
+  return customer ? customer.name : (DEFAULT_MOCK_CUSTOMERS.find(c => c.id === fallbackName)?.name || fallbackName);
 };
 
 
@@ -277,7 +284,7 @@ export const MOCK_REVIEWS: Review[] = [
   }
 ];
 
-export const MOCK_BOOKINGS: Booking[] = [
+const DEFAULT_MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
     customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1'),
@@ -341,3 +348,15 @@ export const MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
+
+export const MOCK_BOOKINGS: Booking[] = loadAndInitialize<Booking>(BOOKINGS_STORAGE_KEY, DEFAULT_MOCK_BOOKINGS, isValidBookingArray);
+
+export function saveBookingsToLocalStorage() {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(MOCK_BOOKINGS));
+    } catch (e) {
+      console.error("Error saving bookings to localStorage:", e);
+    }
+  }
+}
