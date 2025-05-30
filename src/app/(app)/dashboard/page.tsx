@@ -14,31 +14,30 @@ import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock } from 'lucide-
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
-  // Initialize filteredWorkers directly with MOCK_WORKERS
   const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([...MOCK_WORKERS]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    // This effect ensures filteredWorkers is re-populated if MOCK_WORKERS changes
-    // or if currentUser changes (e.g., re-login).
-    // For the initial load, useState already handles it.
+    // Re-initialize filteredWorkers from MOCK_WORKERS when currentUser changes
+    // This helps reflect new signups if MOCK_WORKERS (loaded from localStorage) has been updated
     setFilteredWorkers([...MOCK_WORKERS]);
-    setSelectedWorkerId(undefined);
+    setSelectedWorkerId(undefined); // Reset selected worker when filters/user change
   }, [currentUser]);
 
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
-    let workersToFilter = [...MOCK_WORKERS]; // Start with the full, current list from constants
+    let workersToFilter = [...MOCK_WORKERS]; 
     if (filters.category) {
       workersToFilter = workersToFilter.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
     }
     if (filters.query) {
       const queryLower = filters.query.toLowerCase();
       workersToFilter = workersToFilter.filter(worker =>
-        worker.username.toLowerCase().includes(queryLower) // Case-insensitive username search
+        worker.username.toLowerCase().includes(queryLower) ||
+        (worker.address && worker.address.toLowerCase().includes(queryLower))
       );
     }
     setFilteredWorkers(workersToFilter);
-    setSelectedWorkerId(undefined);
+    setSelectedWorkerId(undefined); // Reset selected worker when filters change
   };
 
   const handleWorkerSelectOnMap = (workerId: string) => {

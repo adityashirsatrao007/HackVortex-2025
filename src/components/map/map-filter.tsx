@@ -70,12 +70,12 @@ export function MapFilter({ onFilterChange }: MapFilterProps) {
             </Select>
           </div>
           <div className="space-y-1.5 md:col-span-2">
-            <Label htmlFor="searchQuery">Search by Username</Label>
+            <Label htmlFor="searchQuery">Search by Username or Location</Label>
             <div className="flex gap-2">
               <Input
                 id="searchQuery"
                 name="searchQuery"
-                placeholder="e.g., rajeshk_worker"
+                placeholder="e.g., rajeshk_worker or Solapur"
                 className="flex-grow shadow-sm"
                 value={currentQuery}
                 onChange={handleSearchInputChange}
