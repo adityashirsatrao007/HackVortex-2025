@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BookingHistoryItem } from '@/components/booking/booking-history-item';
 import type { Booking } from '@/lib/types';
-import { MOCK_BOOKINGS, MOCK_WORKERS, MOCK_CUSTOMERS } from '@/lib/constants';
+import { MOCK_BOOKINGS, MOCK_WORKERS, MOCK_CUSTOMERS, refreshMockBookingsFromLocalStorage } from '@/lib/constants';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListChecks, CalendarClock, CalendarX2, Briefcase, History, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -23,6 +23,7 @@ export default function BookingHistoryPage() {
 
   const fetchUserBookings = useCallback(() => {
     if (!currentUser) return;
+    refreshMockBookingsFromLocalStorage(); // Ensure latest bookings
 
     let bookingsToDisplay: Booking[] = [];
     const allBookings = [...MOCK_BOOKINGS]; // Use a fresh copy
@@ -34,7 +35,7 @@ export default function BookingHistoryPage() {
       if (currentWorkerProfile) {
         bookingsToDisplay = allBookings.filter(b => b.workerId === currentWorkerProfile.id);
       } else {
-        console.warn("Worker profile not found for email:", currentUser.email, "Displaying no jobs.");
+        console.warn("KarigarKart: Worker profile not found for email:", currentUser.email, "Displaying no jobs.");
       }
     } else {
       setPageTitle("My Bookings");
@@ -43,7 +44,7 @@ export default function BookingHistoryPage() {
       if (currentCustomerProfile) {
         bookingsToDisplay = allBookings.filter(b => b.customerId === currentCustomerProfile.id);
       } else {
-         console.warn("Customer profile not found for email:", currentUser.email, "Displaying no bookings.");
+         console.warn("KarigarKart: Customer profile not found for email:", currentUser.email, "Displaying no bookings.");
       }
     }
     setUserBookings(bookingsToDisplay.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()));

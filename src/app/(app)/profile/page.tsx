@@ -11,13 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MOCK_WORKERS, MOCK_CUSTOMERS, SERVICE_CATEGORIES, saveCustomersToLocalStorage, saveWorkersToLocalStorage, saveUserRoleToLocalStorage } from "@/lib/constants";
 import type { UserRole, Worker, Customer, ServiceCategory } from "@/lib/types";
-import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint, Users } from "lucide-react"; // Added Users
+import { UserCircle, Edit3, Save, UserSquare2, Briefcase, BadgeCheck, ShieldAlert, Fingerprint, Users, Info as InfoIconLucide } from "lucide-react"; // Added Users and renamed Info to InfoIconLucide
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -65,7 +65,7 @@ export default function ProfilePage() {
       setAvatarUrl(currentUser.photoURL || 'https://placehold.co/128x128.png');
       
       const defaultUsername = currentUser.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || `user${Date.now().toString().slice(-5)}`;
-      setUsername(defaultUsername); 
+      
 
       if (userAppRole) {
         setSelectedRoleForUi(userAppRole);
@@ -81,6 +81,8 @@ export default function ProfilePage() {
             setAadhaarNumberInput(userProfile.aadhaarNumber || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           } else {
+             // New worker profile, initialize username if not already set during role selection
+            setUsername(prev => prev || defaultUsername);
             setSkillsInput('');
             setHourlyRateInput('');
             setBio('');
@@ -94,10 +96,14 @@ export default function ProfilePage() {
             setAddress(userProfile.address || '');
             if(userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl);
           } else {
+            // New customer profile
+            setUsername(prev => prev || defaultUsername);
             setAddress('');
           }
         }
       } else {
+         // No role selected yet, prime username for role selection step
+         setUsername(defaultUsername); 
          setSelectedRoleForUi(null);
          setAddress('');
          setSkillsInput('');
@@ -126,8 +132,10 @@ export default function ProfilePage() {
       return;
     }
     setIsSaving(true);
+    // Pass the current username from state, which should be pre-filled.
     await selectUserRoleAndInitializeProfile(selectedRoleForUi, username); 
     setIsSaving(false);
+    // No redirect here, userAppRole change in context will re-render the page to show profile fields.
   };
 
   const handleSaveChanges = async () => {
@@ -195,7 +203,19 @@ export default function ProfilePage() {
       if (workerIdx > -1) {
         MOCK_WORKERS[workerIdx] = { ...MOCK_WORKERS[workerIdx], ...workerDataUpdate, role: 'worker' };
       } else {
-        console.error("KarigarKart: Worker profile not found in MOCK_WORKERS during save. This should not happen if role selection initialized it.");
+        // This should ideally not happen if selectUserRoleAndInitializeProfile worked
+        console.error("KarigarKart: Worker profile not found in MOCK_WORKERS during save.");
+         MOCK_WORKERS.push({
+          id: currentUser.uid,
+          email: currentUser.email || '',
+          name: name || 'New Worker',
+          username: username || `worker${Date.now().toString().slice(-4)}`,
+          role: 'worker',
+          location: { lat: 0, lng: 0 },
+          rating: 0,
+          isVerified: false,
+          ...workerDataUpdate
+        } as Worker);
       }
       saveWorkersToLocalStorage();
     } else if (userAppRole === 'customer') {
@@ -204,18 +224,27 @@ export default function ProfilePage() {
       if (customerIdx > -1) {
         MOCK_CUSTOMERS[customerIdx] = { ...MOCK_CUSTOMERS[customerIdx], ...customerDataUpdate, role: 'customer' };
       } else {
-         console.error("KarigarKart: Customer profile not found in MOCK_CUSTOMERS during save. This should not happen if role selection initialized it.");
+         console.error("KarigarKart: Customer profile not found in MOCK_CUSTOMERS during save.");
+         MOCK_CUSTOMERS.push({
+            id: currentUser.uid,
+            email: currentUser.email || '',
+            name: name || 'New Customer',
+            username: username || `customer${Date.now().toString().slice(-4)}`,
+            role: 'customer',
+            ...customerDataUpdate
+         } as Customer);
       }
       saveCustomersToLocalStorage();
     }
 
-    markProfileComplete();
+    markProfileComplete(); // This will re-check completion based on current MOCK data
 
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
     });
     setIsSaving(false);
+    // Redirect logic is now handled by useEffect listening to authContextIsProfileComplete
   };
 
   if (authLoading) {
@@ -245,7 +274,7 @@ export default function ProfilePage() {
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
-          <Info className="h-4 w-4 text-primary" />
+          <InfoIconLucide className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary font-semibold">Welcome, {currentUser.displayName || "New User"}!</AlertTitle>
           <AlertDescription>
             To get started, please tell us who you are. This will help us tailor your experience.
@@ -259,20 +288,26 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <RadioGroup value={selectedRoleForUi || ""} onValueChange={(value) => setSelectedRoleForUi(value as UserRole)}>
-              <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary">
+              <Label
+                htmlFor="role-customer"
+                className="flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary transition-colors"
+              >
                 <RadioGroupItem value="customer" id="role-customer" />
-                <Label htmlFor="role-customer" className="flex-1 cursor-pointer">
-                  <span className="font-semibold block">Customer</span>
+                <div className="flex-1">
+                  <span className="font-semibold block text-foreground">Customer</span>
                   <span className="text-sm text-muted-foreground">I'm looking to hire skilled professionals.</span>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary">
+                </div>
+              </Label>
+              <Label
+                htmlFor="role-worker"
+                className="flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-secondary/50 has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary transition-colors"
+              >
                 <RadioGroupItem value="worker" id="role-worker" />
-                <Label htmlFor="role-worker" className="flex-1 cursor-pointer">
-                   <span className="font-semibold block">Artisan / Worker</span>
+                <div className="flex-1">
+                   <span className="font-semibold block text-foreground">Artisan / Worker</span>
                    <span className="text-sm text-muted-foreground">I offer skilled services to customers.</span>
-                </Label>
-              </div>
+                </div>
+              </Label>
             </RadioGroup>
           </CardContent>
           <CardFooter>
@@ -292,7 +327,7 @@ export default function ProfilePage() {
     <div className="space-y-8">
       {showIncompleteProfileAlert && (
         <Alert variant="default" className="bg-primary/10 border-primary/30 dark:bg-primary/20 dark:border-primary/40">
-          <Info className="h-4 w-4 text-primary" />
+          <InfoIconLucide className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary font-semibold">Complete Your Profile!</AlertTitle>
           <AlertDescription>
             Welcome, {userAppRole === 'worker' ? 'Artisan/Worker' : 'Customer'}! Please fill in the details below and click "Save Changes" to get started. Fields marked with <span className="text-destructive">*</span> are required.
