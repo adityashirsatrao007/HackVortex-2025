@@ -12,7 +12,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 import type { UserRole, Customer, Worker as WorkerType } from '@/lib/types';
 import { MOCK_WORKERS, MOCK_CUSTOMERS, saveWorkersToLocalStorage, saveCustomersToLocalStorage, saveUserRoleToLocalStorage, loadUserRoleFromLocalStorage, detectUserRoleFromMocks, checkProfileCompletion } from '@/lib/constants';
 
@@ -39,18 +39,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setLoading(true); 
+    let unsubscribe: (() => void) | undefined;
+
+    const handleAuthStateChange = (user: FirebaseUser | null) => {
+      setLoading(true);
       try {
         if (user) {
           setCurrentUser(user);
           const persistedRole = loadUserRoleFromLocalStorage(user.uid);
-          // If userAppRole is already set (e.g., by selectUserRoleAndInitializeProfile), don't immediately override with detection.
-          // Detection is more for initial load or if persistedRole is null.
-          const roleToSet = userAppRole && currentUser?.uid === user.uid ? userAppRole : (persistedRole || detectUserRoleFromMocks(user.email));
+          
+          let roleToSet: UserRole | null = null;
+          if (userAppRole && currentUser?.uid === user.uid) { // Prioritize role just set by signup/login/selection
+            roleToSet = userAppRole;
+          } else if (persistedRole) {
+            roleToSet = persistedRole;
+          } else if (user.email) {
+            roleToSet = detectUserRoleFromMocks(user.email);
+          }
           
           setUserAppRole(roleToSet);
           setIsProfileComplete(checkProfileCompletion(user, roleToSet));
@@ -65,19 +73,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserAppRole(null);
         setIsProfileComplete(false);
       } finally {
-        setLoading(false); 
+        setLoading(false);
       }
-    });
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // currentUser and userAppRole removed to avoid re-triggering loops; focus on Firebase auth changes.
+    };
+
+    try {
+      unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+    } catch (error) {
+      console.error("KarigarKart: Failed to subscribe to auth state changes:", error);
+      // If subscription itself fails, ensure we're not stuck loading
+      setCurrentUser(null);
+      setUserAppRole(null);
+      setIsProfileComplete(false);
+      setLoading(false);
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []); // Empty dependency array for onAuthStateChanged setup
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       // onAuthStateChanged will process user details and set loading to false.
-      // For better UX, navigate immediately. AppLayout will handle profile completion checks.
       router.push('/dashboard'); 
       toast({ title: "Logged In", description: "Welcome back!" });
       return userCredential;
@@ -107,16 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         await updateProfile(firebaseUser, { displayName: name });
         
-        // Set basic state for immediate UI update
+        // Set basic state for immediate UI update, will be refined by onAuthStateChanged
         setCurrentUser(firebaseUser); 
-        setUserAppRole(null); // Role will be selected on profile page
-        setIsProfileComplete(false); // Profile is incomplete until role and details are filled
-        
-        // No direct mock data modification here, will be handled by selectUserRoleAndInitializeProfile
+        setUserAppRole(null); 
+        setIsProfileComplete(false);
       }
       toast({ title: "Signup Successful", description: `Welcome, ${name}! Please select your role and complete your profile.` });
       router.push('/profile?roleSelection=true');
-      // onAuthStateChanged will also fire and set loading to false.
       return userCredential;
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -166,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           rating: 0,
           bio: '',
           hourlyRate: 0,
-          address: '',
+          address: '', // Added address for worker
           aadhaarVerified: false,
           aadhaarNumber: '',
         } as WorkerType);
@@ -177,7 +196,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveWorkersToLocalStorage();
     }
     
-    // Profile is still incomplete after role selection; user needs to fill details
     setIsProfileComplete(false); 
   };
 
@@ -185,7 +203,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await firebaseSignOut(auth);
-      // onAuthStateChanged will handle resetting states and then setting setLoading(false)
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error: any) {
