@@ -1,6 +1,3 @@
-Here’s your complete **README content formatted for Notion**, ready to paste with clean formatting and emojis to match Notion’s visual style:
-
----
 
 # 🚀 HackVortex 2025 – Team CodeRadiants
 
