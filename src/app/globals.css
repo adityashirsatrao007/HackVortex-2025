@@ -10,14 +10,14 @@ body {
 @layer base {
   :root {
     /* Karigar Kart - Teal Theme */
-    --background: 210 29% 95%; /* Light gray (#F0F2F5) - Kept from previous */
-    --foreground: 210 25% 25%; /* Darker gray for text - Kept */
+    --background: 210 29% 95%; /* Light gray (#F0F2F5) */
+    --foreground: 210 25% 25%; /* Darker gray for text */
     
-    --card: 0 0% 100%; /* White - Kept */
-    --card-foreground: 210 25% 25%; /* Kept */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 210 25% 25%;
     
-    --popover: 0 0% 100%; /* Kept */
-    --popover-foreground: 210 25% 25%; /* Kept */
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 25% 25%;
     
     --primary: 180 83% 37%; /* Teal (#10acac) */
     --primary-foreground: 0 0% 100%; /* White */
@@ -25,25 +25,25 @@ body {
     --secondary: 180 30% 90%; /* Very light teal (#DBF0F0) */
     --secondary-foreground: 180 60% 30%; /* Darker teal for text on light secondary (#1F7A7A) */
     
-    --muted: 210 30% 88%; /* Kept */
-    --muted-foreground: 210 25% 50%; /* Kept */
+    --muted: 210 30% 88%;
+    --muted-foreground: 210 25% 50%;
     
-    --accent: 36 100% 50%; /* Warm orange (#FF9800) - Kept */
-    --accent-foreground: 0 0% 100%; /* Kept */
+    --accent: 36 100% 50%; /* Warm orange (#FF9800) */
+    --accent-foreground: 0 0% 100%;
     
-    --destructive: 0 84.2% 60.2%; /* Kept */
-    --destructive-foreground: 0 0% 98%; /* Kept */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     
-    --border: 210 20% 80%; /* Kept */
-    --input: 210 20% 85%;   /* Kept */
+    --border: 210 20% 80%;
+    --input: 210 20% 85%;
     --ring: 180 83% 42%;    /* Ring color based on new primary */
     
     --chart-1: 180 75% 45%; /* Shades of new primary for charts */
     --chart-2: 180 75% 30%;
-    --chart-3: 36 90% 60%;  /* Shades of accent for charts - Kept */
-    --chart-4: 36 90% 50%;  /* Kept */
-    --chart-5: 210 30% 70%; /* Muted shade for charts - Kept */
-    --radius: 0.5rem; /* Kept */
+    --chart-3: 36 90% 60%;  /* Shades of accent for charts */
+    --chart-4: 36 90% 50%;
+    --chart-5: 210 30% 70%; /* Muted shade for charts */
+    --radius: 0.5rem;
 
     /* Sidebar colors - will adapt to the new theme */
     --sidebar-background: 0 0% 100%; 
@@ -57,14 +57,14 @@ body {
   }
 
   .dark {
-    --background: 220 15% 12%; /* Dark cool gray - Kept */
-    --foreground: 210 20% 90%; /* Light gray for text - Kept */
+    --background: 220 15% 12%; /* Dark cool gray */
+    --foreground: 210 20% 90%; /* Light gray for text */
     
-    --card: 220 15% 18%; /* Kept */
-    --card-foreground: 210 20% 90%; /* Kept */
+    --card: 220 15% 18%;
+    --card-foreground: 210 20% 90%;
     
-    --popover: 220 15% 18%; /* Kept */
-    --popover-foreground: 210 20% 90%; /* Kept */
+    --popover: 220 15% 18%;
+    --popover-foreground: 210 20% 90%;
 
     --primary: 180 83% 55%; /* Brighter Teal for dark mode (#37E0E0) */
     --primary-foreground: 180 80% 10%; /* Very dark teal for contrast (#053030) */
@@ -72,24 +72,24 @@ body {
     --secondary: 180 30% 20%; /* Dark teal gray for dark secondary (#243D3D) */
     --secondary-foreground: 180 70% 75%; /* Light teal for text on dark secondary (#9AEBEC) */
 
-    --muted: 220 15% 25%; /* Kept */
-    --muted-foreground: 210 20% 65%; /* Kept */
+    --muted: 220 15% 25%;
+    --muted-foreground: 210 20% 65%;
 
-    --accent: 36 100% 60%; /* Slightly lighter orange for dark mode - Kept */
-    --accent-foreground: 20 90% 5%; /* Dark brown/black for contrast - Kept */
+    --accent: 36 100% 60%; /* Slightly lighter orange for dark mode */
+    --accent-foreground: 20 90% 5%; /* Dark brown/black for contrast */
 
-    --destructive: 0 70% 50%; /* Kept */
-    --destructive-foreground: 0 0% 98%; /* Kept */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 30%; /* Kept */
-    --input: 220 15% 30%; /* Kept */
+    --border: 220 15% 30%;
+    --input: 220 15% 30%;
     --ring: 180 83% 60%; /* Ring color based on new dark primary */
     
     --chart-1: 180 75% 65%; /* Shades of new dark primary */
     --chart-2: 180 75% 45%;
-    --chart-3: 36 90% 65%; /* Kept */
-    --chart-4: 36 90% 55%; /* Kept */
-    --chart-5: 210 20% 60%; /* Kept */
+    --chart-3: 36 90% 65%;
+    --chart-4: 36 90% 55%;
+    --chart-5: 210 20% 60%;
 
     /* Sidebar dark colors */
     --sidebar-background: 220 15% 15%;
@@ -109,5 +109,37 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .animate-fadeInScaleUp {
+    animation: fadeInScaleUp 1.5s ease-out forwards;
+  }
+  .animate-fadeInDelay {
+    animation: fadeInDelay 1.5s 0.5s ease-out forwards; /* 0.5s delay */
+    opacity: 0; /* Start with opacity 0 to make fade-in visible */
+  }
+}
+
+@keyframes fadeInScaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInDelay {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
