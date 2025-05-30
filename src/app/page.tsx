@@ -33,7 +33,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="/karigarkart-hero-logo.png" // Updated to reference image in public folder
+                src="/image.png" // Updated to reference image in public folder
                 alt="Karigar Kart Logo" // Updated alt text
                 data-ai-hint="app logo"
                 width={600}
