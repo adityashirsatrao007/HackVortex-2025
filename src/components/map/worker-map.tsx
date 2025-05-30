@@ -35,7 +35,7 @@ export function WorkerMap({ workers = MOCK_WORKERS, selectedWorkerId, onWorkerSe
       <CardContent>
         <div className="relative w-full h-[400px] md:h-[500px] rounded-lg overflow-hidden border-2 border-primary/20 bg-secondary/30 shadow-inner">
           <Image
-            src="https://placehold.co/1200x600.png" // A generic map background
+            src="https://images.unsplash.com/photo-1520299607509-dcd935f9a839?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyMHx8bWFwfGVufDB8fHx8MTc0ODU4OTkyMnww&ixlib=rb-4.1.0&q=80&w=1080" 
             alt="Map Placeholder"
             data-ai-hint="street map"
             layout="fill"
