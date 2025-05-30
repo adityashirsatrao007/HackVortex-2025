@@ -43,6 +43,7 @@ npm install
 npm run dev
 
 # OR
+
 npm start
 ```
 
