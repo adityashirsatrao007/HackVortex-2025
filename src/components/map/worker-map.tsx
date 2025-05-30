@@ -68,7 +68,7 @@ export function WorkerMap({ workers = MOCK_WORKERS, selectedWorkerId, onWorkerSe
                       data-ai-hint="person avatar"
                       width={48}
                       height={48}
-                      className="rounded-full border-2 border-primary/50"
+                      className="rounded-full border-2 border-primary/50 object-cover"
                     />
                     <div>
                       <h4 className="font-semibold text-lg text-foreground">{worker.name}</h4>

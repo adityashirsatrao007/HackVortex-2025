@@ -56,7 +56,7 @@ export function WorkerProfileDetails({ worker }: WorkerProfileDetailsProps) {
               data-ai-hint="person avatar"
               width={128}
               height={128}
-              className="rounded-full mb-4 border-4 border-primary/60 shadow-lg"
+              className="rounded-full mb-4 border-4 border-primary/60 shadow-lg object-cover"
             />
             <CardTitle className="text-2xl">{worker.name}</CardTitle>
             <div className="flex items-center text-muted-foreground">
@@ -133,7 +133,7 @@ export function WorkerProfileDetails({ worker }: WorkerProfileDetailsProps) {
             {worker.selfieWithGpsUrl && (
                  <div className="mt-6 border-t pt-4">
                     <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Recent On-Site Selfie:</h4>
-                    <Image src={worker.selfieWithGpsUrl} alt="Worker Selfie" data-ai-hint="worker selfie" width={150} height={150} className="rounded-lg border-2 border-secondary shadow-md" />
+                    <Image src={worker.selfieWithGpsUrl} alt="Worker Selfie" data-ai-hint="worker selfie" width={150} height={150} className="rounded-lg border-2 border-secondary shadow-md object-cover" />
                  </div>
             )}
           </CardContent>
