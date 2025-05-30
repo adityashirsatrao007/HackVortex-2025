@@ -18,7 +18,7 @@ const DEFAULT_MOCK_WORKERS: Worker[] = [
     rating: 4.5,
     bio: 'Experienced plumber and electrician with 10+ years of service. Reliable and efficient.',
     hourlyRate: 250,
-    avatarUrl: 'https://placehold.co/100x100.png',
+    avatarUrl: 'https://images.unsplash.com/photo-1622782262026-6a327a45014f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxpbmRpYW4lMjBnaXJsfGVufDB8fHx8MTc0ODU5MDE5M3ww&ixlib=rb-4.1.0&q=80&w=1080',
     totalJobs: 120,
     address: 'Worker Address 1, Bangalore',
   },
@@ -115,7 +115,7 @@ const isValidCustomer = (item: any): item is Customer =>
 
 // Function to safely load and initialize data from localStorage
 function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (item: any) => item is T): T[] {
-  let instance: T[] = [...defaultData]; // Start with a copy of default data
+  let instance: T[] = JSON.parse(JSON.stringify(defaultData)); // Deep copy of default data
 
   if (typeof window !== 'undefined') {
     try {
@@ -137,7 +137,7 @@ function loadAndInitialize<T>(key: string, defaultData: T[], validator?: (item: 
     } catch (e) {
       console.warn(`KarigarKart: Error processing localStorage for ${key}. Using defaults and re-saving.`, e);
       // Ensure instance is default and try to save it
-      instance = [...defaultData]; 
+      instance = JSON.parse(JSON.stringify(defaultData)); 
       try {
         localStorage.setItem(key, JSON.stringify(instance));
       } catch (saveError) {
@@ -229,21 +229,21 @@ export function checkProfileCompletion(
   return false;
 }
 
-const safeGetWorkerId = (email: string, fallbackId: string) => {
+const safeGetWorkerId = (email: string, fallbackId: string): string => {
   const worker = MOCK_WORKERS.find(w => w.email === email);
-  return worker ? worker.id : fallbackId;
+  return worker ? worker.id : DEFAULT_MOCK_WORKERS.find(w => w.username === fallbackId)?.id || fallbackId;
 };
-const safeGetWorkerName = (email: string, fallbackName: string) => {
+const safeGetWorkerName = (email: string, fallbackName: string): string => {
   const worker = MOCK_WORKERS.find(w => w.email === email);
-  return worker ? worker.name : fallbackName;
+  return worker ? worker.name : DEFAULT_MOCK_WORKERS.find(w => w.username === fallbackName)?.name || fallbackName;
 }
-const safeGetCustomerId = (email: string, fallbackId: string) => {
+const safeGetCustomerId = (email: string, fallbackId: string): string => {
   const customer = MOCK_CUSTOMERS.find(c => c.email === email);
-  return customer ? customer.id : fallbackId;
+  return customer ? customer.id : DEFAULT_MOCK_CUSTOMERS.find(c => c.username === fallbackId)?.id || fallbackId;
 };
-const safeGetCustomerName = (email: string, fallbackName: string) => {
+const safeGetCustomerName = (email: string, fallbackName: string): string => {
   const customer = MOCK_CUSTOMERS.find(c => c.email === email);
-  return customer ? customer.name : fallbackName;
+  return customer ? customer.name : DEFAULT_MOCK_CUSTOMERS.find(c => c.username === fallbackName)?.name || fallbackName;
 };
 
 
@@ -269,9 +269,9 @@ export const MOCK_REVIEWS: Review[] = [
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'booking-1',
-    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1-fallback'),
+    customerId: safeGetCustomerId('sita.customer@example.com', 'sitas_customer'),
     customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
-    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'rajeshk_worker'),
     workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'plumber',
     dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -282,9 +282,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-2',
-    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2-fallback'),
+    customerId: safeGetCustomerId('vikram.customer@example.com', 'vikramr_customer'),
     customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
-    workerId: safeGetWorkerId('priya.worker@example.com', 'worker-2-fallback'),
+    workerId: safeGetWorkerId('priya.worker@example.com', 'priyas_worker'),
     workerName: safeGetWorkerName('priya.worker@example.com', 'Priya Singh'),
     serviceCategory: 'carpenter',
     dateTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -295,9 +295,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-3',
-    customerId: safeGetCustomerId('sita.customer@example.com', 'customer-1-fallback'),
+    customerId: safeGetCustomerId('sita.customer@example.com', 'sitas_customer'),
     customerName: safeGetCustomerName('sita.customer@example.com', 'Sita Sharma'),
-    workerId: safeGetWorkerId('amit.worker@example.com', 'worker-3-fallback'),
+    workerId: safeGetWorkerId('amit.worker@example.com', 'amitp_worker'),
     workerName: safeGetWorkerName('amit.worker@example.com', 'Amit Patel'),
     serviceCategory: 'painter',
     dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -307,9 +307,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-4',
-    customerId: safeGetCustomerId('customer@example.com', 'customer-test-fallback'),
+    customerId: safeGetCustomerId('customer@example.com', 'test_customer'),
     customerName: safeGetCustomerName('customer@example.com', 'Test Customer User'),
-    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'rajeshk_worker'),
     workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -319,9 +319,9 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
   {
     id: 'booking-5',
-    customerId: safeGetCustomerId('vikram.customer@example.com', 'customer-2-fallback'),
+    customerId: safeGetCustomerId('vikram.customer@example.com', 'vikramr_customer'),
     customerName: safeGetCustomerName('vikram.customer@example.com', 'Vikram Reddy'),
-    workerId: safeGetWorkerId('rajesh.worker@example.com', 'worker-1-fallback'),
+    workerId: safeGetWorkerId('rajesh.worker@example.com', 'rajeshk_worker'),
     workerName: safeGetWorkerName('rajesh.worker@example.com', 'Rajesh Kumar'),
     serviceCategory: 'electrician',
     dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -330,3 +330,5 @@ export const MOCK_BOOKINGS: Booking[] = [
     notes: 'Install new ceiling fan.',
   }
 ];
+
+
