@@ -5,12 +5,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { WorkerMap } from '@/components/map/worker-map';
 import { MapFilter } from '@/components/map/map-filter';
 import type { Worker, ServiceCategory, Booking } from '@/lib/types';
-import { MOCK_WORKERS, MOCK_BOOKINGS } from '@/lib/constants'; 
+import { MOCK_WORKERS, MOCK_BOOKINGS, refreshMockBookingsFromLocalStorage } from '@/lib/constants';
 import { WorkerCard } from '@/components/worker/worker-card';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock, Users, AlertCircle } from 'lucide-react'; 
+import { Info, Briefcase, TrendingUp, CheckSquare, CalendarClock, Users, AlertCircle } from 'lucide-react';
 
 export default function DashboardPage() {
   const { userAppRole, currentUser } = useAuth();
@@ -24,6 +24,7 @@ export default function DashboardPage() {
 
   const fetchWorkerJobCounts = useCallback(() => {
     if (userAppRole === 'worker' && currentUser) {
+      refreshMockBookingsFromLocalStorage(); // Ensure we have latest bookings
       const workerBookings = MOCK_BOOKINGS.filter(b => b.workerId === currentUser.uid);
       setPendingJobsCount(workerBookings.filter(b => b.status === 'pending').length);
       setUpcomingJobsCount(workerBookings.filter(b => (b.status === 'accepted' || b.status === 'in-progress') && new Date(b.dateTime) >= new Date()).length);
@@ -33,38 +34,42 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
+    // Initialize workers list and selected worker based on current user context
+    // MOCK_WORKERS is already loaded from localStorage by constants.ts
     setFilteredWorkers([...MOCK_WORKERS]);
     setSelectedWorkerId(undefined);
+
     if (userAppRole === 'worker') {
-      fetchWorkerJobCounts();
+      fetchWorkerJobCounts(); // Initial fetch for worker stats
     }
-  }, [currentUser, userAppRole, fetchWorkerJobCounts]); 
+  }, [currentUser, userAppRole, fetchWorkerJobCounts]); // Rerun if user or role changes
 
   // Periodically refresh job counts for worker dashboard to simulate real-time updates
   useEffect(() => {
     if (userAppRole === 'worker') {
+        fetchWorkerJobCounts(); // Fetch once immediately
         const intervalId = setInterval(() => {
             fetchWorkerJobCounts();
         }, 5000); // Refresh every 5 seconds
-        return () => clearInterval(intervalId);
+        return () => clearInterval(intervalId); // Cleanup interval on component unmount or role change
     }
   }, [userAppRole, fetchWorkerJobCounts]);
 
 
   const handleFilterChange = (filters: { category?: string; query?: string }) => {
-    let workersToFilter = [...MOCK_WORKERS];
+    let workersToFilter = [...MOCK_WORKERS]; // Always start with a fresh list
     if (filters.category) {
       workersToFilter = workersToFilter.filter(worker => worker.skills.includes(filters.category as ServiceCategory));
     }
     if (filters.query) {
       const queryLower = filters.query.toLowerCase();
       workersToFilter = workersToFilter.filter(worker =>
-        worker.username.toLowerCase().includes(queryLower) ||
+        (worker.username && worker.username.toLowerCase().includes(queryLower)) ||
         (worker.address && worker.address.toLowerCase().includes(queryLower))
       );
     }
     setFilteredWorkers(workersToFilter);
-    setSelectedWorkerId(undefined);
+    setSelectedWorkerId(undefined); // Reset selected worker on filter change
   };
 
   const handleWorkerSelectOnMap = (workerId: string) => {
@@ -97,7 +102,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{pendingJobsCount}</div>
-                        <p className="text-xs text-muted-foreground">{pendingJobsCount > 0 ? "Action required!" : "No new requests."}</p>
+                        <p className="text-xs text-muted-foreground">{pendingJobsCount > 0 ? "Action required! Check 'Schedule'." : "No new requests."}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-secondary/40 hover:shadow-lg transition-shadow">
