@@ -33,11 +33,11 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x400.png"
+                src="https://placehold.co/600x381.png" // Adjusted dimensions
                 alt="Hero"
-                data-ai-hint="artisans tools"
+                data-ai-hint="app logo" // Updated hint
                 width={600}
-                height={400}
+                height={381} // Adjusted height
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow"
               />
             </div>
