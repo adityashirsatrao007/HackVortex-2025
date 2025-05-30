@@ -28,17 +28,17 @@ export default function LandingPage() {
                     <Link href="/signup">Get Started</Link>
                   </Button>
                   <Button variant="outline" size="lg" asChild className="shadow hover:shadow-md">
-                    <Link href="/dashboard">Find Artisans</Link> 
+                    <Link href="/dashboard">Find Artisans</Link>
                   </Button>
                 </div>
               </div>
               <Image
-                src="/image.png" // Updated to reference image in public folder
-                alt="Karigar Kart Logo" // Updated alt text
+                src="https://images.unsplash.com/photo-1581264669997-3f222f331aaa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMnx8c2hvcHBpbmclMjBjYXJ0fGVufDB8fHx8MTc0ODU4NzYxNHww&ixlib=rb-4.1.0&q=80&w=1080"
+                alt="Karigar Kart Logo"
                 data-ai-hint="app logo"
                 width={600}
-                height={381} 
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-contain sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow" // Changed object-cover to object-contain
+                height={381}
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-contain sm:w-full lg:order-last lg:aspect-square border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow"
               />
             </div>
           </div>
